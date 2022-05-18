@@ -21,9 +21,13 @@ class Parse:
     def statementList(self, blockStatementStopper = None):
         # If it is one statement
         statementList = [self.statement()]
+        # If checking for block statement
         if blockStatementStopper != None:
-            while (self.lookahead != None and self.lookahead.get('type') != blockStatementStopper):
-            # Append to list
+            # While not reached end of file and there is indentation
+            while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper):
+                # Check the indentation
+                self.eat("block")
+                # Append to list
                 statementList.append(self.statement())   
         else:
             # If it is multiple statement
@@ -40,12 +44,16 @@ class Parse:
             return self.expressionStatement()
     
     def blockStatement(self):
+        # Check for beginning of block statement (indentation)
         self.eat("block")
+        # Add the statement into the body
         body = [self.statement()]
-        # While the statements are still in a block statement (or there is indentation)
-        while self.lookahead.get('type') == "block":
+        # While there are still statements in the block statement (or there is indentation)
+        if self.lookahead.get('type') == "block":
+            # Check the indentation
             self.eat("block")
-            body = self.statementList("block")
+            # Combine the statement list into the body
+            body += self.statementList("block")
         ast = {
             'type': 'blockStatement',
             'body': body
@@ -77,6 +85,7 @@ class Parse:
             return self.stringLiteral()
         # If none of the token type matches
         else:
+            print(tokenType)
             raise ValueError("Unsupported Literal Type")
 
     def numericalLiteral(self):
