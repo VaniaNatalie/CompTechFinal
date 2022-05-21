@@ -24,7 +24,6 @@ class Parse:
     def statementList(self, blockStatementStopper = None):
         # If it is one statement
         statementList = [self.statement()]
-        print("stllist", statementList)
         # If checking for block statement
         if blockStatementStopper != None:
             
@@ -44,16 +43,7 @@ class Parse:
 
                 else:
                     statementList.append(self.statement())
-                    self.tempBlockChecker = False
- 
-
-                '''    
-                self.eat("block")
-                if s.get('type') != "BlockStatement":
-                    print("sttmnet type", s.get('type'))
-                    return statementList
-                '''
-               
+                    self.tempBlockChecker = False          
                 
         else:
             # If it is multiple statement
