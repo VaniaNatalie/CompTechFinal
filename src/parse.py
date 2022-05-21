@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 from token import Token
 
 # Parser
@@ -5,6 +6,8 @@ class Parse:
     def __init__ (self, s):
         self.s = s
         self.t = Token(self.s)
+        self.blockChecker = 0
+        self.tempBlockChecker = False
     
     # Main entry point
     def parsee(self):     
@@ -21,20 +24,44 @@ class Parse:
     def statementList(self, blockStatementStopper = None):
         # If it is one statement
         statementList = [self.statement()]
+        print("stllist", statementList)
         # If checking for block statement
         if blockStatementStopper != None:
+            
             # While not reached end of file and there is indentation
-            while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper):
-                # Check the indentation
+            while ((self.lookahead != None and self.lookahead.get('type') == blockStatementStopper) or self.tempBlockChecker == True):
+                if self.tempBlockChecker == False:
+                    try:
+                        for i in range(self.blockChecker):
+                            self.eat("block")
+                    except:
+                        self.blockChecker -= 1
+                        self.tempBlockChecker = True
+                        return statementList
+
+                    s=self.statement()                    
+                    statementList.append(s)
+
+                else:
+                    statementList.append(self.statement())
+                    self.tempBlockChecker = False
+ 
+
+                '''    
                 self.eat("block")
-                # Append to list
-                statementList.append(self.statement())   
+                if s.get('type') != "BlockStatement":
+                    print("sttmnet type", s.get('type'))
+                    return statementList
+                '''
+               
+                
         else:
             # If it is multiple statement
             # While we still have tokens, continue to loop (stop if cursor exceeds token)
             while (self.lookahead != None):
                 # Append to list
-                statementList.append(self.statement())    
+                statementList.append(self.statement()) 
+        # tempBlockChecker = False   
         return statementList
     
     def statement(self):
@@ -44,25 +71,21 @@ class Parse:
             return self.expressionStatement()
     
     def blockStatement(self):
-        # Check for beginning of block statement (indentation)
-        self.eat("block")
-        # Add the statement into the body
-        body = [self.statement()]
+        body = []
+        self.blockChecker += 1
         # While there are still statements in the block statement (or there is indentation)
-        if self.lookahead.get('type') == "block":
-            # Check the indentation
-            self.eat("block")
-            # Combine the statement list into the body
-            body += self.statementList("block")
+        # Check the indentation
+        self.eat("block")
+        # Combine the statement list into the body
+        body += self.statementList("block")
         ast = {
-            'type': 'blockStatement',
+            'type': 'BlockStatement',
             'body': body
         }
         return ast
     
     def expressionStatement(self):
         expr = self.expression()
-        
         # As \n isn't exactly the delimiter for python, the last statement in the source code that doesn't end with \n should be valid
         # To ensure that, we will run .eat() after checking that the token doesn't return None (or the cursor exceeds the input)
         if self.lookahead != None:
@@ -85,7 +108,6 @@ class Parse:
             return self.stringLiteral()
         # If none of the token type matches
         else:
-            print(tokenType)
             raise ValueError("Unsupported Literal Type")
 
     def numericalLiteral(self):

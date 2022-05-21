@@ -40,7 +40,13 @@ class Token:
             return match.group()
         return None
 
-        
+    def checkBlockStatement(self, type, value):
+        # Check for block statement that starts with indent and needs to start after statement 
+        # or check for block statement that starts with indent and indent
+        if type == "indent" and self.tokenTypePrev == "statement" or type == "indent" and self.tokenTypePrev == "indent":
+            return True
+        elif self.tokenTypePrev == "indent" and type == "whitespace":
+            raise ValueError("Indentation Error")
 
     def getNextToken(self, info):
         # if cursor exceeds the word or has reached end of file
@@ -59,13 +65,19 @@ class Token:
                 continue
             # Check for block statement that starts with indent and needs to start after statement 
             # or check for block statement that starts with indent and indent
-            if tokenType == "indent" and self.tokenTypePrev == "statement" or tokenType == "indent" and self.tokenTypePrev == "indent":
+            # if tokenType == "indent" and self.tokenTypePrev == "statement" or tokenType == "indent" and self.tokenTypePrev == "indent":
+            #     self.tokenTypePrev = tokenType
+            #     ast = {'type': "block", 'value': tokenValue}
+            #     return ast
+            # elif self.tokenTypePrev == "indent" and tokenType == "whitespace":
+            #     raise ValueError("Indentation Error")
+            # Skip token, used for whitespaces, comments
+
+            if self.checkBlockStatement(tokenType, tokenValue):
                 self.tokenTypePrev = tokenType
                 ast = {'type': "block", 'value': tokenValue}
                 return ast
-            elif self.tokenTypePrev == "indent" and tokenType == "whitespace":
-                raise ValueError("Indentation Error")
-            # Skip token, used for whitespaces, comments
+
             elif tokenType == None or tokenType == "whitespace":
                 self.getNextToken('whitespace')
             # If token valid
@@ -73,6 +85,5 @@ class Token:
                 # Store current token type 
                 self.tokenTypePrev = tokenType  
                 ast = {'type': tokenType, 'value': tokenValue}
-                print(ast)
                 return ast
         raise ValueError("Unexpected Token {}".format(self.s[0]))
