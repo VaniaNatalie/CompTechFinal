@@ -4,9 +4,13 @@ from token import Token
 # Parser
 class Parse:   
     def __init__ (self, s):
-        self.s = s
+        # string input
+        self.s = s 
+        # token object
         self.t = Token(self.s)
+        # previous number indentation
         self.blockChecker = 0
+        # block checker flag 
         self.tempBlockChecker = False
     
     # Main entry point
@@ -24,26 +28,55 @@ class Parse:
     def statementList(self, blockStatementStopper = None):
         # If it is one statement
         statementList = [self.statement()]
+
         # If checking for block statement
         if blockStatementStopper != None:
-            
-            # While not reached end of file and there is indentation
+            # While not reached end of file and there is indentation or tempBlockChecker is True
             while ((self.lookahead != None and self.lookahead.get('type') == blockStatementStopper) or self.tempBlockChecker == True):
                 if self.tempBlockChecker == False:
+                    # Try looping the indentation based on the previous number of indentation
                     try:
                         for i in range(self.blockChecker):
                             self.eat("block")
+                    
+                    # If number of current indentation < previous number of indentation
                     except:
+                        # Decrease the previos number of indentation 
                         self.blockChecker -= 1
+                        # Set tempBlockChecker to True becuase we are going to need 
+                        # to add the current statement to previous block statement
                         self.tempBlockChecker = True
+                        # Return statement list (which only contains one statement) 
+                        # and break out of loop
                         return statementList
-
-                    s=self.statement()                    
-                    statementList.append(s)
-
-                else:
+                    
+                    # If current indentation = previous number of indentation           
                     statementList.append(self.statement())
-                    self.tempBlockChecker = False          
+
+                # If tempBlockChecker = True
+                else:
+                    # Append statement to statementList
+                    statementList.append(self.statement())
+                    # Set flag to False
+                    self.tempBlockChecker = False
+
+            ''' 
+            NOTE!!!
+            Why do we need to have tempBlockChecker/flag?
+            It is useful in scenarios like:
+                1
+                        2
+                3
+            Without tempBlockChecker, after we break out of loop for statement 2,
+            the block in statement 3 can no longer be detected because it has 
+            been eaten (self.eat("block")) when checking for number of indentation
+            (for i in range(self.blockChecker)).
+            We need statement 1 to still detect statement 3 as part of its
+            block statement, however, without the block at the beginning of 
+            statement 3, it can no longer loop (because we only check 
+            self.lookahead.get('type') == blockStatementStopper). Hence, we added
+            a flag to let the program loop and add statement 3 to block statement 1.
+            '''   
                 
         else:
             # If it is multiple statement
