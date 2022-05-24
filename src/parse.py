@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 from token import Token
 
 # Parser
@@ -8,13 +7,14 @@ class Parse:
         self.s = s 
         # token object
         self.t = Token(self.s)
+
+    
+    # Main entry point
+    def parsee(self):     
         # previous number indentation
         self.blockChecker = 0
         # block checker flag 
         self.tempBlockChecker = False
-    
-    # Main entry point
-    def parsee(self):     
         self.lookahead = self.t.getNextToken('parse')
         return self.program()
 
@@ -108,11 +108,16 @@ class Parse:
         return ast
     
     def expressionStatement(self):
-        expr = self.expression()
+        expr = [self.expression()]
         # As \n isn't exactly the delimiter for python, the last statement in the source code that doesn't end with \n should be valid
         # To ensure that, we will run .eat() after checking that the token doesn't return None (or the cursor exceeds the input)
         if self.lookahead != None:
-            self.eat("statement")
+            try:
+                self.eat("statement")
+            # In cases where there are more than one 
+            except:
+                expr.append(self.expression())
+
         ast = {
             'type': 'ExpressionStatement',
             'expression': expr
@@ -120,7 +125,18 @@ class Parse:
         return ast
         
     def expression(self):
-        return self.literal()
+        if self.lookahead.get('type') == 'operators':
+            return self.operator()
+        else:
+            return self.literal()
+
+    def operator(self):
+        token = self.eat('operators')
+        ast = {
+            'type': 'Operator',
+            'value': token.get('value')
+        }
+        return ast
     
     def literal(self):
         # Get token type
@@ -152,11 +168,10 @@ class Parse:
     def eat(self, tokenType):
         token = self.lookahead
         if token == None:
-            raise ValueError("error") 
+            raise ValueError("Reached End of File") 
             
         # Different token type from input
         if token.get('type') != tokenType:
             raise ValueError("Unmatched Token Value")
-        val = 'token' + tokenType
-        self.lookahead = self.t.getNextToken(val)
+        self.lookahead = self.t.getNextToken('eat')
         return token

@@ -7,13 +7,17 @@ tokenRegex = [
     # -- Delimiter -- 
     ["statement", "^\n"], # As python doesn't really have a delimeter to mark the end of a statement, we assigned \n as the delimeiter
     # -- Whitespace --
-    ["whitespace", "^[^\S\n]+"], # None is for skippable contents
+    ["whitespace", "^[^\S\n]+"], # None is for skippable contents 
+    # -- Operators --
+    ["operators", "\+|\-|\*|\/"],
+
     # -- Comments --
     # Single-line comments
     [None, "^#.*"],
     # Multi-line comments
     [None, "^'''[\s\S]*'''"],
     [None, '^"""[\s\S]*"""'],
+
     # -- Numbers --
     ["NUMBER", "^\d+"],
     # -- String -- 
@@ -46,7 +50,7 @@ class Token:
         if type == "indent" and self.tokenTypePrev == "statement" or type == "indent" and self.tokenTypePrev == "indent":
             return True
         elif self.tokenTypePrev == "indent" and type == "whitespace":
-            raise ValueError("Indentation Error")
+            raise SyntaxError("Indentation Error")
 
     def getNextToken(self, info):
         # if cursor exceeds the word or has reached end of file
@@ -63,15 +67,6 @@ class Token:
             # If doesn't match, continue
             if tokenValue == None:
                 continue
-            # Check for block statement that starts with indent and needs to start after statement 
-            # or check for block statement that starts with indent and indent
-            # if tokenType == "indent" and self.tokenTypePrev == "statement" or tokenType == "indent" and self.tokenTypePrev == "indent":
-            #     self.tokenTypePrev = tokenType
-            #     ast = {'type': "block", 'value': tokenValue}
-            #     return ast
-            # elif self.tokenTypePrev == "indent" and tokenType == "whitespace":
-            #     raise ValueError("Indentation Error")
-            # Skip token, used for whitespaces, comments
 
             if self.checkBlockStatement(tokenType, tokenValue):
                 self.tokenTypePrev = tokenType
@@ -80,10 +75,11 @@ class Token:
 
             elif tokenType == None or tokenType == "whitespace":
                 self.getNextToken('whitespace')
+
             # If token valid
             else:
                 # Store current token type 
-                self.tokenTypePrev = tokenType  
+                self.tokenTypePrev = tokenType
                 ast = {'type': tokenType, 'value': tokenValue}
                 return ast
         raise ValueError("Unexpected Token {}".format(self.s[0]))
