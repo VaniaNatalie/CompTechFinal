@@ -1,0 +1,43 @@
+Program
+: StatementList
+;
+
+StatementList
+: Statement
+| StatementList Statement
+;
+
+Statement
+: ExpressionStatement
+| BlockStatement
+;
+
+ExpressionStatement
+: Expression
+; 
+
+BlockStatement
+: '\s{4}' StatementList
+\n
+
+Expression
+: Operator
+| Literal
+;
+
+Operator
+: Operator
+;
+
+Literal
+: NumericalLiteral
+| StringLiteral
+;
+
+NumericalLiteral
+: NUMBERS
+;
+
+StringLiteral
+: STRING
+;

@@ -109,19 +109,22 @@ class Parse:
     
     def expressionStatement(self):
         expr = [self.expression()]
-        # As \n isn't exactly the delimiter for python, the last statement in the source code that doesn't end with \n should be valid
-        # To ensure that, we will run .eat() after checking that the token doesn't return None (or the cursor exceeds the input)
-        if self.lookahead != None:
-            try:
-                self.eat("statement")
-            # In cases where there are more than one 
-            except:
-                expr.append(self.expression())
-
+        # Loop while hasn't reached end of statement
+        while self.lookahead.get('type') != "statement" and self.lookahead != None:
+            expr.append(self.expression())
+            # If reached end of file break from loop
+            if self.lookahead == None:
+                break
         ast = {
             'type': 'ExpressionStatement',
             'expression': expr
         }
+        # If reached end of file return ast
+        if self.lookahead == None:
+            return ast
+        # Else check for end of statement
+        else:
+            self.eat("statement")
         return ast
         
     def expression(self):
@@ -174,4 +177,5 @@ class Parse:
         if token.get('type') != tokenType:
             raise ValueError("Unmatched Token Value")
         self.lookahead = self.t.getNextToken('eat')
+        print("lookahead in eat", self.lookahead)
         return token
