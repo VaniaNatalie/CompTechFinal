@@ -8,8 +8,9 @@ StatementList
 ;
 
 Statement
-: ExpressionStatement
-| BlockStatement
+: BlockStatement
+| VariableDeclaration
+| ExpressionStatement
 ;
 
 ExpressionStatement
@@ -18,7 +19,7 @@ ExpressionStatement
 
 BlockStatement
 : '\s{4}' StatementList
-\n
+;
 
 Expression
 : Operator
@@ -32,6 +33,7 @@ Operator
 Literal
 : NumericalLiteral
 | StringLiteral
+| BooleanLiteral
 ;
 
 NumericalLiteral

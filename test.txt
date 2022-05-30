@@ -1,4 +1,7 @@
-'hello'
-    1
-12+2
-12+2
+var='hi'
+var+=2
+var
+'''
+hello
+'''
+True

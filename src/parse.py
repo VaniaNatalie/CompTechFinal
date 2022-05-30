@@ -1,5 +1,8 @@
 from token import Token
 
+# Storing declared variables
+var = []
+
 # Parser
 class Parse:   
     def __init__ (self, s):
@@ -90,6 +93,8 @@ class Parse:
     def statement(self):
         if self.lookahead.get('type') == "block":
             return self.blockStatement()
+        elif self.lookahead.get('type') == "identifier":
+            return self.variableDeclaration()
         else:
             return self.expressionStatement()
     
@@ -106,11 +111,47 @@ class Parse:
             'body': body
         }
         return ast
+
+    def variableDeclaration(self):
+        tempVar = self.eat("identifier")
+        tempVarValue = tempVar.get('value')
+        if self.lookahead != None:
+            # Check if it is variable declaration e.g. identifier = value
+            if self.lookahead.get('type') == 'asg-operators' and self.lookahead.get('value') == '=':
+                # Add the variable name to the list
+                var.append(tempVarValue)
+                self.eat("asg-operators")
+                # Get the value
+                try:
+                    value = self.expressionStatement()
+
+                    ast = {
+                        'type': 'VariableDeclaration',
+                        'variable' : var[-1],
+                        'value': value
+                    }
+                    return ast
+                # If there is no value, raise error
+                except:
+                    raise SyntaxError("Invalid Syntax")
+
+        # If not variable declaration, check if var exists
+        if tempVarValue in var:
+            # Call regular expression statement
+            return self.expressionStatement(tempVar)
+        # If it doesn't exist, raise error
+        else:
+            raise SyntaxError("Variable doesn't exist")
+            
     
-    def expressionStatement(self):
-        expr = [self.expression()]
-        # Loop while hasn't reached end of statement
-        while self.lookahead.get('type') != "statement" and self.lookahead != None:
+    def expressionStatement(self, identifier=None):
+        if identifier != None:
+            expr = [identifier]
+            # self.eat("asg-operators")
+        else:
+            expr = [self.expression()]
+        # Loop while hasn't reached end of file or end of statement 
+        while self.lookahead != None and self.lookahead.get('type') != "statement":
             expr.append(self.expression())
             # If reached end of file break from loop
             if self.lookahead == None:
@@ -128,13 +169,15 @@ class Parse:
         return ast
         
     def expression(self):
-        if self.lookahead.get('type') == 'operators':
-            return self.operator()
+        if self.lookahead.get('type') == 'ar-operators':
+            return self.operator('ar-operators')
+        elif self.lookahead.get('type') == 'asg-operators':
+            return self.operator('asg-operators')
         else:
             return self.literal()
 
-    def operator(self):
-        token = self.eat('operators')
+    def operator(self, operator):
+        token = self.eat(operator)
         ast = {
             'type': 'Operator',
             'value': token.get('value')
@@ -148,8 +191,11 @@ class Parse:
             return self.numericalLiteral()
         elif tokenType == 'STRING':
             return self.stringLiteral()
+        elif tokenType == 'BOOLEAN':
+            return self.booleanLiteral()
         # If none of the token type matches
         else:
+            print(tokenType)
             raise ValueError("Unsupported Literal Type")
 
     def numericalLiteral(self):
@@ -168,14 +214,22 @@ class Parse:
         }
         return ast
 
+    def booleanLiteral(self):
+        token = self.eat('BOOLEAN')
+        ast = {
+            'type': 'BooleanLiteral',
+            'value': token.get('value')
+        }
+        return ast
+
     def eat(self, tokenType):
         token = self.lookahead
+        # If reached end of file
         if token == None:
             raise ValueError("Reached End of File") 
-            
         # Different token type from input
         if token.get('type') != tokenType:
             raise ValueError("Unmatched Token Value")
+        # Get the next text
         self.lookahead = self.t.getNextToken('eat')
-        print("lookahead in eat", self.lookahead)
         return token

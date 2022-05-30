@@ -8,8 +8,15 @@ tokenRegex = [
     ["statement", "^\n"], # As python doesn't really have a delimeter to mark the end of a statement, we assigned \n as the delimeiter
     # -- Whitespace --
     ["whitespace", "^[^\S\n]+"], # None is for skippable contents 
+
     # -- Operators --
-    ["operators", "\+|\-|\*|\/"],
+    # Assignment Operators
+    ["asg-operators", "^(=|\+=|-=|\/=|%=)"],
+    # Arithmetic Operators
+    ["ar-operators", "^(\+|\-|\*|\/)"],
+    # Logical Operators
+    ["log-operators", "^(and|or)"],
+
 
     # -- Comments --
     # Single-line comments
@@ -18,11 +25,17 @@ tokenRegex = [
     [None, "^'''[\s\S]*'''"],
     [None, '^"""[\s\S]*"""'],
 
+    # -- LITERALS -- 
     # -- Numbers --
     ["NUMBER", "^\d+"],
     # -- String -- 
     ["STRING", '^"[^"]*"'],
-    ["STRING", "^'[^']*'"]
+    ["STRING", "^'[^']*'"],
+    # -- Boolean --
+    ["BOOLEAN", "^(True|False)"],
+
+    # -- Identifier --
+    ["identifier","^[^_!.@=%$'\"][A-Z_*a-z]+\d*"],
 ]
 
 # Tokenizer
@@ -67,14 +80,24 @@ class Token:
             # If doesn't match, continue
             if tokenValue == None:
                 continue
-
+            
+            # Checking for block
             if self.checkBlockStatement(tokenType, tokenValue):
                 self.tokenTypePrev = tokenType
+                # Return block token
                 ast = {'type': "block", 'value': tokenValue}
                 return ast
 
-            elif tokenType == None or tokenType == "whitespace":
-                self.getNextToken('whitespace')
+            # For skippable contents
+            elif tokenType == None or tokenType == "whitespace" or tokenType == "indent":
+                nextToken = self.getNextToken('whitespace')
+                # If next token after whitespace is statement (\n)
+                if nextToken != None and nextToken.get('type') == 'statement':
+                    # Change to None so at the next iter it can be skipped
+                    nextToken['type'] = None
+                    # Get next token to skip
+                    return self.getNextToken('whitespace')
+                return
 
             # If token valid
             else:
