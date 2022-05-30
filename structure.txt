@@ -10,11 +10,12 @@ StatementList
 Statement
 : BlockStatement
 | VariableDeclaration
-| ExpressionStatement
+| ExpressionStatement -> regular statement, arithmatic operations
 ;
 
 ExpressionStatement
 : Expression
+| BinaryExpression -> comparison operator | Literal/Identifier <operator> Literal/Identifier
 ; 
 
 BlockStatement
@@ -24,7 +25,11 @@ BlockStatement
 Expression
 : Operator
 | Literal
+| Identifier
 ;
+
+Identifier
+: Identifier;
 
 Operator
 : Operator

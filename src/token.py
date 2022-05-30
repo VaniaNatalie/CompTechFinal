@@ -10,6 +10,8 @@ tokenRegex = [
     ["whitespace", "^[^\S\n]+"], # None is for skippable contents 
 
     # -- Operators --
+    # Comparison Operators
+    ["com-operators", "^(<=|>=|<|>|==|!=)"],
     # Assignment Operators
     ["asg-operators", "^(=|\+=|-=|\/=|%=)"],
     # Arithmetic Operators

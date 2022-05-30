@@ -1,7 +1,4 @@
 var='hi'
 var+=2
-var
-'''
-hello
-'''
-True
+var2=2
+var<=var2

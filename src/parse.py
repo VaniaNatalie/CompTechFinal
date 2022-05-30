@@ -113,11 +113,12 @@ class Parse:
         return ast
 
     def variableDeclaration(self):
-        tempVar = self.eat("identifier")
+        tempVar = self.identifier(True)
         tempVarValue = tempVar.get('value')
         if self.lookahead != None:
             # Check if it is variable declaration e.g. identifier = value
             if self.lookahead.get('type') == 'asg-operators' and self.lookahead.get('value') == '=':
+                
                 # Add the variable name to the list
                 var.append(tempVarValue)
                 self.eat("asg-operators")
@@ -142,20 +143,28 @@ class Parse:
         # If it doesn't exist, raise error
         else:
             raise SyntaxError("Variable doesn't exist")
-            
+
     
     def expressionStatement(self, identifier=None):
         if identifier != None:
             expr = [identifier]
-            # self.eat("asg-operators")
+            print('expr', expr)
         else:
             expr = [self.expression()]
         # Loop while hasn't reached end of file or end of statement 
         while self.lookahead != None and self.lookahead.get('type') != "statement":
+            if self.lookahead.get('type') == 'com-operators':
+                # Literal/Identifier <operator> Literal/Identifier
+                if 'Literal' in expr[0].get('type') or \
+                    'Identifier' in expr[0].get('type'):
+                    expr = self.binaryExpression(expr)
+                    break
+            # Append expression
             expr.append(self.expression())
             # If reached end of file break from loop
             if self.lookahead == None:
                 break
+            
         ast = {
             'type': 'ExpressionStatement',
             'expression': expr
@@ -167,12 +176,32 @@ class Parse:
         else:
             self.eat("statement")
         return ast
+
+    def binaryExpression(self, expr):
+        # Append comparison operator
+        expr.append(self.expression())
+        if self.lookahead != None:
+            # Binary expression syntax
+            if 'Literal' in expr[0].get('type') or \
+                'Identifier' in expr[0].get('type'):
+                expr.append(self.expression())
+        else:
+            raise SyntaxError("Invalid Syntax")
+        ast = {
+            'type': 'BinaryExpression',
+            'expression': expr
+        }
+        return ast
         
     def expression(self):
         if self.lookahead.get('type') == 'ar-operators':
             return self.operator('ar-operators')
         elif self.lookahead.get('type') == 'asg-operators':
             return self.operator('asg-operators')
+        elif self.lookahead.get('type') == 'com-operators':
+            return self.operator('com-operators')
+        elif self.lookahead.get('type') == 'identifier':
+            return self.identifier()
         else:
             return self.literal()
 
@@ -180,6 +209,18 @@ class Parse:
         token = self.eat(operator)
         ast = {
             'type': 'Operator',
+            'value': token.get('value')
+        }
+        return ast
+    
+    def identifier(self, declaration = False):
+        token = self.eat('identifier')
+        value = token.get('value')
+        if declaration == False:
+            if value not in var:
+                raise SyntaxError("Variable Not Declared")
+        ast = {
+            'type': 'Identifier',
             'value': token.get('value')
         }
         return ast
@@ -229,6 +270,7 @@ class Parse:
             raise ValueError("Reached End of File") 
         # Different token type from input
         if token.get('type') != tokenType:
+            print(tokenType, token)
             raise ValueError("Unmatched Token Value")
         # Get the next text
         self.lookahead = self.t.getNextToken('eat')
