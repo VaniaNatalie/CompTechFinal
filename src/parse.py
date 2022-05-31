@@ -94,6 +94,8 @@ class Parse:
     def statement(self):
         if self.lookahead.get('type') == "block":
             return self.blockStatement()
+        elif self.lookahead.get('type') == "special":
+            return self.ifStatement()
         elif self.lookahead.get('type') == "identifier":
             return self.variableDeclaration()
         else:
@@ -112,6 +114,11 @@ class Parse:
             'body': body
         }
         return ast
+
+    def ifStatement(self):
+        # if-type Literal/BinaryExpression/LogicalExpression
+        ifType = self.eat("special")
+        pass
 
     def variableDeclaration(self):
         tempVar = self.identifier(True)
@@ -155,10 +162,14 @@ class Parse:
         while self.lookahead != None and self.lookahead.get('type') != "statement":
             # If next token is comparison operators, replace current expr
             # with Binary Expression
+            if self.lookahead.get('type') == 'ar-operators':
+                expr = self.expression(expr[-1])
+                break
             if self.lookahead.get('type') == 'com-operators':
-                expr = self.expression(expr)
+                expr = self.expression(expr[-1])
                 
-                if self.lookahead.get('type') == 'log-operators':
+                if self.lookahead != None and \
+                    self.lookahead.get('type') == 'log-operators':
                     expr = self.expression(expr)
                 break
             # Append expression
@@ -181,7 +192,7 @@ class Parse:
         
     def expression(self, expr=None):
         if self.lookahead.get('type') == 'ar-operators':
-            return self.operator('ar-operators')
+            return self.arithmethicExpression(expr)
         elif self.lookahead.get('type') == 'asg-operators':
             return self.operator('asg-operators')
         elif self.lookahead.get('type') == 'com-operators':
@@ -193,22 +204,65 @@ class Parse:
         else:
             return self.literal()
 
+    def arithmethicExpression(self, expr):
+        tempExpr = []
+        # Literal/Identifier <operator> Literal/Identifier
+        if expr != None and 'Literal' in expr.get('type') or \
+            expr != None and 'Identifier' in expr.get('type'):
+            # Append token
+            tempExpr.append(expr)
+            # While haven't reached end of file and there are still
+            # ar op, keep adding to tempExpr
+            while self.lookahead != None and \
+                self.lookahead.get('type') == 'ar-operators':
+                tempExpr.append(self.operator('ar-operators'))
+                # If haven't reached end of file
+                if self.lookahead != None:
+                    tempExpr.append(self.expression())
+                    # Arithmetic expression syntax
+                    if 'Literal' in tempExpr[-1].get('type') or \
+                        'Identifier' in tempExpr[-1].get('type'):
+                        pass
+                else:
+                    # If doesn't fulfill syntax
+                    raise SyntaxError("Invalid Syntax")
+
+            ast = {
+                'type': 'ArithmethicExpression',
+                'expression': tempExpr
+            }
+            return ast
+        # If doesn't fulfill syntax 
+        raise SyntaxError("Invalid Syntax")
+
     def binaryExpression(self, expr):
-        # Literal/Identifier <operator> Literal/Identfier
-        if expr != None and 'Literal' in expr[0].get('type') or \
-            expr != None and 'Identifier' in expr[0].get('type'):
-            # Append comparison operator
-            expr.append(self.operator('com-operators'))
-            if self.lookahead != None:
-                expr.append(self.expression())
-                # Binary expression syntax
-                if 'Literal' in expr[-1].get('type') or \
-                    'Identifier' in expr[-1].get('type'):  
-                        ast = {
-                            'type': 'BinaryExpression',
-                            'expression': expr
-                        }
-                        return ast
+        tempExpr = []
+        # Literal/Identifier <operator> Literal/Identifier
+        if expr != None and 'Literal' in expr.get('type') or \
+            expr != None and 'Identifier' in expr.get('type'):
+            # Append token
+            tempExpr.append(expr)
+            # While haven't reached end of file and there are still
+            # com op, keep adding to tempExpr
+            while self.lookahead != None and \
+                self.lookahead.get('type') == 'com-operators':
+                tempExpr.append(self.operator('com-operators'))
+                # If haven't reached end of file
+                if self.lookahead != None:
+                    tempExpr.append(self.expression())
+                    # Binary expression syntax
+                    if 'Literal' in tempExpr[-1].get('type') or \
+                        'Identifier' in tempExpr[-1].get('type'):
+                        pass
+                else:
+                    # If doesn't fulfill syntax
+                    raise SyntaxError("Invalid Syntax")
+
+            ast = {
+                'type': 'BinaryExpression',
+                'expression': tempExpr
+            }
+            return ast
         # If doesn't fulfill syntax 
         raise SyntaxError("Invalid Syntax")
         
@@ -216,21 +270,25 @@ class Parse:
         tempExpr = []
         # BinaryExpression <operator> BinaryExpression
         if expr != None and 'Binary' in expr.get('type'):
-            expr = [expr] # Append as list
-            expr.append(self.eat('log-operators')) # Append logical op
-            # While doesn't reach end of file
-            if self.lookahead != None:
-                # Call next token and append to temp list
-                tempExpr = [self.expression()]
-                # Check if the next token is com op
-                if self.lookahead.get('type') == 'com-operators':
-                    # Check for binary expression and pass the temp list
-                    expr.append(self.binaryExpression(tempExpr))
-                ast = {
-                    'type': 'LogicalExpression',
-                    'expression': expr
-                }
-                return ast
+            tempExpr.append(expr)
+            while self.lookahead != None and \
+                self.lookahead.get('type') == 'log-operators':
+                tempExpr.append(self.eat('log-operators')) # Append logical op
+                # While doesn't reach end of file
+                if self.lookahead != None:
+                    # Call next token to pass to binary expr
+                    lastToken = self.expression()
+                    # Check if the next token is com op
+                    if self.lookahead.get('type') == 'com-operators':
+                        # Check for binary expression and pass the last token
+                        tempExpr.append(self.binaryExpression(lastToken))
+                else:
+                    raise SyntaxError("Invalid Syntax")
+            ast = {
+                'type': 'LogicalExpression',
+                'expression': tempExpr
+            }
+            return ast
         # If doesn't fulfill syntax 
         raise SyntaxError("Invalid Syntax")
 
@@ -265,6 +323,8 @@ class Parse:
             return self.stringLiteral()
         elif tokenType == 'BOOLEAN':
             return self.booleanLiteral()
+        elif tokenType == 'NONE':
+            return self.noneLiteral()
         # If none of the token type matches
         else:
             print(tokenType)
@@ -294,6 +354,16 @@ class Parse:
         }
         return ast
 
+    def noneLiteral(self):
+        token = self.eat('NONE')
+        ast = {
+            'type': 'NoneLiteral',
+            'value': token.get('value')
+        }
+        return ast
+
+    # Function to consume token type and check with the input
+    # Then get next token
     def eat(self, tokenType):
         token = self.lookahead
         # If reached end of file

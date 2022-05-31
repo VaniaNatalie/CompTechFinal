@@ -9,6 +9,9 @@ tokenRegex = [
     # -- Whitespace --
     ["whitespace", "^[^\S\n]+"], # None is for skippable contents 
 
+    # -- Special Keywords --
+    ["special", "^if"],
+
     # -- Operators --
     # Comparison Operators
     ["com-operators", "^(<=|>=|<|>|==|!=)"],
@@ -35,6 +38,8 @@ tokenRegex = [
     ["STRING", "^'[^']*'"],
     # -- Boolean --
     ["BOOLEAN", "^(True|False)"],
+    # -- None --
+    ["NONE", "^None"],
 
     # -- Identifier --
     ["identifier","^[^_!.@=%$'\"][A-Z_*a-z]+\d*"],
