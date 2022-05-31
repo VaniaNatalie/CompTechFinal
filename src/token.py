@@ -99,7 +99,7 @@ class Token:
                     nextToken['type'] = None
                     # Get next token to skip
                     return self.getNextToken('whitespace')
-                return
+                
 
             # If token valid
             else:

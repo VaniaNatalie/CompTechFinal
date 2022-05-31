@@ -35,7 +35,8 @@ class Parse:
         # If checking for block statement
         if blockStatementStopper != None:
             # While not reached end of file and there is indentation or tempBlockChecker is True
-            while ((self.lookahead != None and self.lookahead.get('type') == blockStatementStopper) or self.tempBlockChecker == True):
+            while ((self.lookahead != None and self.lookahead.get('type') == blockStatementStopper) or\
+                self.tempBlockChecker == True):
                 if self.tempBlockChecker == False:
                     # Try looping the indentation based on the previous number of indentation
                     try:
@@ -148,17 +149,18 @@ class Parse:
     def expressionStatement(self, identifier=None):
         if identifier != None:
             expr = [identifier]
-            print('expr', expr)
         else:
             expr = [self.expression()]
         # Loop while hasn't reached end of file or end of statement 
         while self.lookahead != None and self.lookahead.get('type') != "statement":
+            # If next token is comparison operators, replace current expr
+            # with Binary Expression
             if self.lookahead.get('type') == 'com-operators':
-                # Literal/Identifier <operator> Literal/Identifier
-                if 'Literal' in expr[0].get('type') or \
-                    'Identifier' in expr[0].get('type'):
-                    expr = self.binaryExpression(expr)
-                    break
+                expr = self.expression(expr)
+                
+                if self.lookahead.get('type') == 'log-operators':
+                    expr = self.expression(expr)
+                break
             # Append expression
             expr.append(self.expression())
             # If reached end of file break from loop
@@ -176,34 +178,62 @@ class Parse:
         else:
             self.eat("statement")
         return ast
-
-    def binaryExpression(self, expr):
-        # Append comparison operator
-        expr.append(self.expression())
-        if self.lookahead != None:
-            # Binary expression syntax
-            if 'Literal' in expr[0].get('type') or \
-                'Identifier' in expr[0].get('type'):
-                expr.append(self.expression())
-        else:
-            raise SyntaxError("Invalid Syntax")
-        ast = {
-            'type': 'BinaryExpression',
-            'expression': expr
-        }
-        return ast
         
-    def expression(self):
+    def expression(self, expr=None):
         if self.lookahead.get('type') == 'ar-operators':
             return self.operator('ar-operators')
         elif self.lookahead.get('type') == 'asg-operators':
             return self.operator('asg-operators')
         elif self.lookahead.get('type') == 'com-operators':
-            return self.operator('com-operators')
+            return self.binaryExpression(expr)
+        elif self.lookahead.get('type') == 'log-operators':
+            return self.logicalExpression(expr)
         elif self.lookahead.get('type') == 'identifier':
             return self.identifier()
         else:
             return self.literal()
+
+    def binaryExpression(self, expr):
+        # Literal/Identifier <operator> Literal/Identfier
+        if expr != None and 'Literal' in expr[0].get('type') or \
+            expr != None and 'Identifier' in expr[0].get('type'):
+            # Append comparison operator
+            expr.append(self.operator('com-operators'))
+            if self.lookahead != None:
+                expr.append(self.expression())
+                # Binary expression syntax
+                if 'Literal' in expr[-1].get('type') or \
+                    'Identifier' in expr[-1].get('type'):  
+                        ast = {
+                            'type': 'BinaryExpression',
+                            'expression': expr
+                        }
+                        return ast
+        # If doesn't fulfill syntax 
+        raise SyntaxError("Invalid Syntax")
+        
+    def logicalExpression(self, expr):
+        tempExpr = []
+        # BinaryExpression <operator> BinaryExpression
+        if expr != None and 'Binary' in expr.get('type'):
+            expr = [expr] # Append as list
+            expr.append(self.eat('log-operators')) # Append logical op
+            # While doesn't reach end of file
+            if self.lookahead != None:
+                # Call next token and append to temp list
+                tempExpr = [self.expression()]
+                # Check if the next token is com op
+                if self.lookahead.get('type') == 'com-operators':
+                    # Check for binary expression and pass the temp list
+                    expr.append(self.binaryExpression(tempExpr))
+                ast = {
+                    'type': 'LogicalExpression',
+                    'expression': expr
+                }
+                return ast
+        # If doesn't fulfill syntax 
+        raise SyntaxError("Invalid Syntax")
+
 
     def operator(self, operator):
         token = self.eat(operator)
@@ -216,6 +246,7 @@ class Parse:
     def identifier(self, declaration = False):
         token = self.eat('identifier')
         value = token.get('value')
+        print(declaration)
         if declaration == False:
             if value not in var:
                 raise SyntaxError("Variable Not Declared")
