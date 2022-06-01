@@ -118,20 +118,38 @@ class Parse:
     def ifStatement(self):
         expr = [] # What to test in the if statement
         body = [] # Content of if statement
-        # if-type Literal/ArithmeticExpression/BinaryExpression/LogicalExpression
+        # if-type Literal/ArithmeticExpr/BinaryExpr/LogicalExpr:
+        # BlockStatement
         ifType = self.eat("special").get('value')
         expr.append(self.expression())
         if self.lookahead != None:
-            if self.lookahead.get('type') == 'ar-operators':
+            # If next token = ar operators, replace with Arithmetic Expr
+            # If next token = com operators, replace with Binary Expr
+            if self.lookahead.get('type') == 'ar-operators' or \
+                self.lookahead.get('type') == 'com-operators':
                 expr = self.expression(expr[-1])
-                
-                    
-            elif self.lookahead.get('type') == 'com-operators':
-                expr = self.expression(expr[-1])
-                
+                # If next token is log operators, replace with Logical Expr  
                 if self.lookahead != None and \
                     self.lookahead.get('type') == 'log-operators':
                     expr = self.expression(expr)
+            else:
+                raise SyntaxError("Invalid Syntax")
+
+            # Check for :
+            if self.lookahead != None and \
+                self.lookahead.get('type') == ':':
+                # If statement syntax
+                self.eat(':')
+                self.eat('statement')
+            else:
+                raise SyntaxError("Missing :")
+            
+            # Check for block statement
+            if self.lookahead != None and \
+                self.lookahead.get('type') == 'block':
+                body.append(self.statement())
+            else:
+                raise SyntaxError("Invalid Syntax")
 
         ast = {
             'type': 'IfStatement',
@@ -140,6 +158,7 @@ class Parse:
             'body': body
         }
         return ast
+        # raise SyntaxError("Invalid Syntax")
 
     def variableDeclaration(self):
         tempVar = self.identifier(True)
@@ -181,21 +200,17 @@ class Parse:
             expr = [self.expression()]
         # Loop while hasn't reached end of file or end of statement 
         while self.lookahead != None and self.lookahead.get('type') != "statement":
-            # If next token = com operators, replace with Arithmetic Expr
-            if self.lookahead.get('type') == 'ar-operators':
+            # If next token = ar operators, replace with Arithmetic Expr
+            # If next token = com operators, replace with Binary Expr
+            if self.lookahead.get('type') == 'ar-operators' or \
+                self.lookahead.get('type') == 'com-operators':
                 expr = self.expression(expr[-1])
+                # If next token is log operators, replace with Logical Expr  
                 if self.lookahead != None and \
                     self.lookahead.get('type') == 'log-operators':
                     expr = self.expression(expr)
                 break
 
-            # If next token = com operators, replace with Binary Expr
-            if self.lookahead.get('type') == 'com-operators':
-                expr = self.expression(expr[-1])
-                if self.lookahead != None and \
-                    self.lookahead.get('type') == 'log-operators':
-                    expr = self.expression(expr)
-                break
             # Append expression
             expr.append(self.expression())
             # If reached end of file break from loop

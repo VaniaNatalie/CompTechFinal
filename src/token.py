@@ -9,8 +9,9 @@ tokenRegex = [
     # -- Whitespace --
     ["whitespace", "^[^\S\n]+"], # None is for skippable contents 
 
-    # -- Special Keywords --
+    # -- Special Keywords and Symbols--
     ["special", "^if"],
+    [":", "^:"],
 
     # -- Operators --
     # Comparison Operators
