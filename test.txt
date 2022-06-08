@@ -1,8 +1,3 @@
-if 24+3 and 25+3:
-    else:
-        25
-        else:
-            45
-    else:
-        56
-'sdf'
+def test(var1):
+    if 2:
+        2+3

@@ -2,6 +2,7 @@ from token import Token
 
 # Storing declared variables
 var = []
+func = []
 
 # Parser
 class Parse:   
@@ -36,17 +37,6 @@ class Parse:
 
         # If checking for block statement
         if blockStatementStopper != None:
-        #     while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper):
-        #         self.eat('block')
-        #         tempBlockChecker += 1
-        #     print(tempBlockChecker, self.blockChecker, self.lookahead)
-        #     if tempBlockChecker < self.blockChecker:
-        #         return statementList
-        #     elif tempBlockChecker == self.blockChecker:
-        #         print(self.lookahead)
-        #         statementList.append(self.statement()) 
-        #     else:
-        #         raise SyntaxError("Unmatched Indent")
 
             # While not reached end of file and there is indentation
             while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper):
@@ -54,7 +44,6 @@ class Parse:
                 # blockChecker is updated everytime a statement that requires
                 # indentation is called
                 # Loop through the indentation based on the correct indentation
-                print("selfblock", self.blockChecker)
                 for i in range(self.blockChecker):
                     self.eat("block")
                     # Track how many loop there is currently
@@ -67,7 +56,7 @@ class Parse:
                 # 2. A syntax error
                 if tempBlockChecker < self.blockChecker:
                     # If it is if statement
-                    if self.lookahead.get('type') == 'special':
+                    if self.lookahead.get('type') == 'special-if':
                         # Change current indentation to match
                         self.blockChecker = tempBlockChecker
                         return statementList
@@ -93,8 +82,10 @@ class Parse:
     def statement(self):
         # if self.lookahead.get('type') == "block":
         #     return self.blockStatement()
-        if self.lookahead.get('type') == "special":
+        if self.lookahead.get('type') == "special-if":
             return self.ifStatement()
+        elif self.lookahead.get('type') == "special-def":
+            return self.functionDeclaration()
         elif self.lookahead.get('type') == "identifier":
             return self.variableDeclaration()
         else:
@@ -122,22 +113,24 @@ class Parse:
         
         # if-type Literal/ArithmeticExpr/BinaryExpr/LogicalExpr:
         # BlockStatement
-        ifType = self.eat("special").get('value')
+        ifType = self.eat("special-if").get('value')
         # Syntax for if and elif
         if ifType == 'if' or ifType == 'elif':
             expr.append(self.expression())
             if self.lookahead != None:
                 # If next token = ar operators, replace with Arithmetic Expr
                 # If next token = com operators, replace with Binary Expr
-                if self.lookahead.get('type') == 'ar-operators' or \
-                    self.lookahead.get('type') == 'com-operators':
+                if self.lookahead.get('type') == ('ar-operators' or 'com-operators'):
                     expr = self.expression(expr[-1])
                     # If next token is log operators, replace with Logical Expr  
                     if self.lookahead != None and \
                         self.lookahead.get('type') == 'log-operators':
                         expr = self.expression(expr)
+                # If statement with literal
+                elif 'Literal' in expr[-1].get('type'):
+                    pass
                 else:
-                    raise SyntaxError("Invalid Syntax")
+                    raise SyntaxError("Invalid Syntax: If Statement")
 
         # Check for :
         if self.lookahead != None and \
@@ -146,14 +139,14 @@ class Parse:
             self.eat(':')
             self.eat('statement')
         else:
-            raise SyntaxError("Invalid Syntax")
+            raise SyntaxError("Missing :")
         
         # Check for block statement
         if self.lookahead != None and \
             self.lookahead.get('type') == 'block':
             body.append(self.blockStatement())
         else:
-            raise SyntaxError("Invalid Syntax")
+            raise SyntaxError("Block Statement Expected")
 
         ast = {
             'type': 'IfStatement',
@@ -162,6 +155,73 @@ class Parse:
             'body': body
         }
         return ast
+
+
+    def functionDeclaration(self):
+        body = []
+        funcId = ''
+        params = []
+        # def identifier(optionalVariable):
+        # BlockStatement
+        self.eat('special-def') # Eat def
+        if self.lookahead != None:
+            if self.lookahead.get('type') == 'identifier':
+                # Check if identifier has been declared for function
+                funcId = self.identifier(True, True)
+            else:
+                raise SyntaxError("Identifier Expected")
+            # Function Declaration syntax
+            if self.lookahead != None and \
+                self.lookahead.get('type') == '(':
+                self.eat('(')
+                # If there are parameters (e.g. identifier)
+                if self.lookahead.get('type') == 'identifier':
+                    # Loop until the end of params
+                    while self.lookahead.get('type') == 'identifier':
+                        # Check for duplicate params 
+                        if self.lookahead.get('value') not in params:
+                            # Append to params
+                            params.append(self.lookahead.get('value'))
+                            self.identifier(True)
+                        else:
+                            raise SyntaxError("Duplicate Parameters")
+            else:
+                raise SyntaxError("Missing (")
+            
+            # Function Declaration syntax
+            if self.lookahead != None and \
+                self.lookahead.get('type') == ')':
+                self.eat(')')
+            else:
+                raise SyntaxError("Missing )")
+
+            if self.lookahead != None and \
+                self.lookahead.get('type') == ':':
+                self.eat(':')
+                self.eat('statement')
+            else:
+                raise SyntaxError("Missing :")
+        else:
+            raise SyntaxError("Invalid Syntax: Variable Declaration")
+
+        # Add the correct indentation
+        self.blockChecker += 1
+        # Check for block statement
+        if self.lookahead != None and \
+            self.lookahead.get('type') == 'block':
+            body.append(self.blockStatement())
+        else:
+            raise SyntaxError("Block Statement Expected")
+            
+        ast = {
+            'type': 'FunctionDeclaration',
+            'funcId': funcId,
+            'params': params,
+            'body': body
+        }
+        return ast
+
+
 
     def variableDeclaration(self):
         tempVar = self.identifier(True)
@@ -185,7 +245,7 @@ class Parse:
                     return ast
                 # If there is no value, raise error
                 except:
-                    raise SyntaxError("Invalid Syntax")
+                    raise SyntaxError("Value Expected")
 
         # If not variable declaration, check if var exists
         if tempVarValue in var:
@@ -267,7 +327,7 @@ class Parse:
                         pass
                 else:
                     # If doesn't fulfill syntax
-                    raise SyntaxError("Invalid Syntax")
+                    raise SyntaxError("Invalid Syntax: Arithmetic Expression")
 
             ast = {
                 'type': 'ArithmeticExpression',
@@ -275,7 +335,7 @@ class Parse:
             }
             return ast
         # If doesn't fulfill syntax 
-        raise SyntaxError("Invalid Syntax")
+        raise SyntaxError("Invalid Syntax: Arithmetic Expression")
 
     def binaryExpression(self, expr):
         tempExpr = []
@@ -298,7 +358,7 @@ class Parse:
                         pass
                 else:
                     # If doesn't fulfill syntax
-                    raise SyntaxError("Invalid Syntax")
+                    raise SyntaxError("Invalid Syntax: Binary Expression")
 
             ast = {
                 'type': 'BinaryExpression',
@@ -306,7 +366,7 @@ class Parse:
             }
             return ast
         # If doesn't fulfill syntax 
-        raise SyntaxError("Invalid Syntax")
+        raise SyntaxError("Invalid Syntax: Binary Expression")
         
     def logicalExpression(self, expr):
         tempExpr = []
@@ -330,14 +390,14 @@ class Parse:
                         # Check for arithmetic expression and pass the last token
                         tempExpr.append(self.arithmeticExpression(lastToken))
                 else:
-                    raise SyntaxError("Invalid Syntax")
+                    raise SyntaxError("Invalid Syntax: Logical Expression")
             ast = {
                 'type': 'LogicalExpression',
                 'expression': tempExpr
             }
             return ast
         # If doesn't fulfill syntax 
-        raise SyntaxError("Invalid Syntax")
+        raise SyntaxError("Invalid Syntax: Logical Expression")
 
 
     def operator(self, operator):
@@ -347,13 +407,24 @@ class Parse:
             'value': token.get('value')
         }
         return ast
+
+    def CallExpression(self):
+        pass
     
-    def identifier(self, declaration = False):
+    def identifier(self, declaration = False, function = False):
         token = self.eat('identifier')
         value = token.get('value')
+        # Skip checking for var declaration
         if declaration == False:
             if value not in var:
                 raise SyntaxError("Variable Not Declared")
+        # Checking for function declaration
+        if function == True:
+            # If function id has not been used
+            if function not in func:
+                func.append(value)
+            else:
+                raise SyntaxError("Duplicate Function Name")
         ast = {
             'type': 'Identifier',
             'value': token.get('value')
