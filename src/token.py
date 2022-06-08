@@ -10,8 +10,10 @@ tokenRegex = [
     ["whitespace", "^[^\S\n]+"], # None is for skippable contents 
 
     # -- Special Keywords and Symbols--
-    ["special", "^if"],
+    ["special", "^(if|elif|else)"],
     [":", "^:"],
+    ["(", "^\("],
+    [")", "^\)"],
 
     # -- Operators --
     # Comparison Operators
@@ -65,16 +67,19 @@ class Token:
             return match.group()
         return None
 
+    # Check for block statements
     def checkBlockStatement(self, type, value):
         # Check for block statement that starts with indent and needs to start after statement 
         # or check for block statement that starts with indent and indent
-        if type == "indent" and self.tokenTypePrev == "statement" or type == "indent" and self.tokenTypePrev == "indent":
+        if type == "indent" and (self.tokenTypePrev == "statement" \
+            or self.tokenTypePrev == "indent"):
             return True
+        # If there is a whitespace after indent that != indent
         elif self.tokenTypePrev == "indent" and type == "whitespace":
             raise SyntaxError("Indentation Error")
 
     def getNextToken(self, info):
-        # if cursor exceeds the word or has reached end of file
+        # If cursor exceeds the word or has reached end of file
         if self.cursor >= len(self.s):
             return None
         self.s = self.s[self.cursor:]
@@ -97,7 +102,8 @@ class Token:
                 return ast
 
             # For skippable contents
-            elif tokenType == None or tokenType == "whitespace" or tokenType == "indent":
+            elif tokenType == None or tokenType == "whitespace" or \
+                tokenType == "indent":
                 nextToken = self.getNextToken('whitespace')
                 # If next token after whitespace is statement (\n)
                 if nextToken != None and nextToken.get('type') == 'statement':
@@ -105,12 +111,18 @@ class Token:
                     nextToken['type'] = None
                     # Get next token to skip
                     return self.getNextToken('whitespace')
+            
+            # For empty lines
+            elif self.tokenTypePrev == "statement" and tokenType == "statement":
+                tokenType = None
+                # Get next statement to skip
+                return self.getNextToken('whitespace')
                 
-
             # If token valid
             else:
                 # Store current token type 
                 self.tokenTypePrev = tokenType
                 ast = {'type': tokenType, 'value': tokenValue}
+                
                 return ast
         raise ValueError("Unexpected Token {}".format(self.s[0]))

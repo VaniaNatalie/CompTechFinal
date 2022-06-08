@@ -1,4 +1,8 @@
-if 24+26 and 34<27:
-    24
-    24
+if 24+3 and 25+3:
+    else:
+        25
+        else:
+            45
+    else:
+        56
 'sdf'

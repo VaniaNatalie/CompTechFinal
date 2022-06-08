@@ -14,10 +14,9 @@ class Parse:
     
     # Main entry point
     def parsee(self):     
-        # previous number indentation
+        # checker for blocks
         self.blockChecker = 0
         # block checker flag 
-        self.tempBlockChecker = False
         self.lookahead = self.t.getNextToken('parse')
         return self.program()
 
@@ -30,57 +29,58 @@ class Parse:
     
     def statementList(self, blockStatementStopper = None):
         # If it is one statement
-        statementList = [self.statement()]
+        statementList = []
+        
+        if self.lookahead.get('type') != 'block':
+            statementList = [self.statement()]
 
         # If checking for block statement
         if blockStatementStopper != None:
-            # While not reached end of file and there is indentation or tempBlockChecker is True
-            while ((self.lookahead != None and self.lookahead.get('type') == blockStatementStopper) or\
-                self.tempBlockChecker == True):
-                if self.tempBlockChecker == False:
-                    # Try looping the indentation based on the previous number of indentation
-                    try:
-                        for i in range(self.blockChecker):
-                            self.eat("block")
-                    
-                    # If number of current indentation < previous number of indentation
-                    except:
-                        # Decrease the previos number of indentation 
-                        self.blockChecker -= 1
-                        # Set tempBlockChecker to True becuase we are going to need 
-                        # to add the current statement to previous block statement
-                        self.tempBlockChecker = True
-                        # Return statement list (which only contains one statement) 
-                        # and break out of loop
+        #     while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper):
+        #         self.eat('block')
+        #         tempBlockChecker += 1
+        #     print(tempBlockChecker, self.blockChecker, self.lookahead)
+        #     if tempBlockChecker < self.blockChecker:
+        #         return statementList
+        #     elif tempBlockChecker == self.blockChecker:
+        #         print(self.lookahead)
+        #         statementList.append(self.statement()) 
+        #     else:
+        #         raise SyntaxError("Unmatched Indent")
+
+            # While not reached end of file and there is indentation
+            while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper):
+                tempBlockChecker = 0
+                # blockChecker is updated everytime a statement that requires
+                # indentation is called
+                # Loop through the indentation based on the correct indentation
+                print("selfblock", self.blockChecker)
+                for i in range(self.blockChecker):
+                    self.eat("block")
+                    # Track how many loop there is currently
+                    tempBlockChecker += 1
+                    # If next token is not block anymore, break
+                    if self.lookahead.get('type') != 'block':
+                        break
+                # If tempBlockChecker < the correct indentation, there are 2 possibilities
+                # 1. Another if statement is called
+                # 2. A syntax error
+                if tempBlockChecker < self.blockChecker:
+                    # If it is if statement
+                    if self.lookahead.get('type') == 'special':
+                        # Change current indentation to match
+                        self.blockChecker = tempBlockChecker
                         return statementList
-                    
-                    # If current indentation = previous number of indentation           
-                    statementList.append(self.statement())
-
-                # If tempBlockChecker = True
-                else:
-                    # Append statement to statementList
-                    statementList.append(self.statement())
-                    # Set flag to False
-                    self.tempBlockChecker = False
-
-            ''' 
-            NOTE!!!
-            Why do we need to have tempBlockChecker/flag?
-            It is useful in scenarios like:
-                1
-                        2
-                3
-            Without tempBlockChecker, after we break out of loop for statement 2,
-            the block in statement 3 can no longer be detected because it has 
-            been eaten (self.eat("block")) when checking for number of indentation
-            (for i in range(self.blockChecker)).
-            We need statement 1 to still detect statement 3 as part of its
-            block statement, however, without the block at the beginning of 
-            statement 3, it can no longer loop (because we only check 
-            self.lookahead.get('type') == blockStatementStopper). Hence, we added
-            a flag to let the program loop and add statement 3 to block statement 1.
-            '''   
+                    # Else
+                    else:
+                        raise SyntaxError("Unmatched Indent")
+                
+                # If there is still block, raise an indentation error
+                if self.lookahead.get('type') == "block":
+                    raise SyntaxError("Unmatched Indent")
+                
+                # Add statement to statement list      
+                statementList.append(self.statement())    
                 
         else:
             # If it is multiple statement
@@ -88,13 +88,12 @@ class Parse:
             while (self.lookahead != None):
                 # Append to list
                 statementList.append(self.statement()) 
-        # tempBlockChecker = False   
         return statementList
     
     def statement(self):
-        if self.lookahead.get('type') == "block":
-            return self.blockStatement()
-        elif self.lookahead.get('type') == "special":
+        # if self.lookahead.get('type') == "block":
+        #     return self.blockStatement()
+        if self.lookahead.get('type') == "special":
             return self.ifStatement()
         elif self.lookahead.get('type') == "identifier":
             return self.variableDeclaration()
@@ -103,53 +102,58 @@ class Parse:
     
     def blockStatement(self):
         body = []
-        self.blockChecker += 1
-        # While there are still statements in the block statement (or there is indentation)
-        # Check the indentation
-        self.eat("block")
-        # Combine the statement list into the body
-        body += self.statementList("block")
-        ast = {
-            'type': 'BlockStatement',
-            'body': body
-        }
-        return ast
+        # self.eat('block') is called in statement list as there is a possibility
+        # of multiple statements in a block statement
+        if self.lookahead != None:
+            # Combine the statement list into the body
+            body += self.statementList("block")
+            ast = {
+                'type': 'BlockStatement',
+                'body': body
+            }
+            return ast
+        raise SyntaxError("Invalid Syntax")
 
     def ifStatement(self):
         expr = [] # What to test in the if statement
         body = [] # Content of if statement
+        # Add 1 block token to each call of if statement
+        self.blockChecker += 1
+        
         # if-type Literal/ArithmeticExpr/BinaryExpr/LogicalExpr:
         # BlockStatement
         ifType = self.eat("special").get('value')
-        expr.append(self.expression())
-        if self.lookahead != None:
-            # If next token = ar operators, replace with Arithmetic Expr
-            # If next token = com operators, replace with Binary Expr
-            if self.lookahead.get('type') == 'ar-operators' or \
-                self.lookahead.get('type') == 'com-operators':
-                expr = self.expression(expr[-1])
-                # If next token is log operators, replace with Logical Expr  
-                if self.lookahead != None and \
-                    self.lookahead.get('type') == 'log-operators':
-                    expr = self.expression(expr)
-            else:
-                raise SyntaxError("Invalid Syntax")
+        # Syntax for if and elif
+        if ifType == 'if' or ifType == 'elif':
+            expr.append(self.expression())
+            if self.lookahead != None:
+                # If next token = ar operators, replace with Arithmetic Expr
+                # If next token = com operators, replace with Binary Expr
+                if self.lookahead.get('type') == 'ar-operators' or \
+                    self.lookahead.get('type') == 'com-operators':
+                    expr = self.expression(expr[-1])
+                    # If next token is log operators, replace with Logical Expr  
+                    if self.lookahead != None and \
+                        self.lookahead.get('type') == 'log-operators':
+                        expr = self.expression(expr)
+                else:
+                    raise SyntaxError("Invalid Syntax")
 
-            # Check for :
-            if self.lookahead != None and \
-                self.lookahead.get('type') == ':':
-                # If statement syntax
-                self.eat(':')
-                self.eat('statement')
-            else:
-                raise SyntaxError("Missing :")
-            
-            # Check for block statement
-            if self.lookahead != None and \
-                self.lookahead.get('type') == 'block':
-                body.append(self.statement())
-            else:
-                raise SyntaxError("Invalid Syntax")
+        # Check for :
+        if self.lookahead != None and \
+            self.lookahead.get('type') == ':':
+            # If statement syntax
+            self.eat(':')
+            self.eat('statement')
+        else:
+            raise SyntaxError("Invalid Syntax")
+        
+        # Check for block statement
+        if self.lookahead != None and \
+            self.lookahead.get('type') == 'block':
+            body.append(self.blockStatement())
+        else:
+            raise SyntaxError("Invalid Syntax")
 
         ast = {
             'type': 'IfStatement',
@@ -158,7 +162,6 @@ class Parse:
             'body': body
         }
         return ast
-        # raise SyntaxError("Invalid Syntax")
 
     def variableDeclaration(self):
         tempVar = self.identifier(True)
@@ -348,7 +351,6 @@ class Parse:
     def identifier(self, declaration = False):
         token = self.eat('identifier')
         value = token.get('value')
-        print(declaration)
         if declaration == False:
             if value not in var:
                 raise SyntaxError("Variable Not Declared")
