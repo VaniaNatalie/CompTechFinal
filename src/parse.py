@@ -1,11 +1,11 @@
 
+from cmath import exp
 from token import Token
 
 # Storing declared variables
 var = []
 func = []
 funcParams = []
-specialFunc = ["print", "input"]
 
 # Parser
 class Parse:   
@@ -116,6 +116,8 @@ class Parse:
         #     return self.blockStatement()
         if self.lookahead.get('type') == "special-if":
             return self.ifStatement()
+        elif self.lookahead.get('type') == "special-func":
+            return self.CallExpression()
         elif self.lookahead.get('type') == "special-def":
             return self.functionDeclaration()
         elif self.lookahead.get('type') == "return":
@@ -239,7 +241,7 @@ class Parse:
             else:
                 raise SyntaxError("Missing :")
         else:
-            raise SyntaxError("Invalid Syntax: Variable Declaration")
+            raise SyntaxError("Invalid Syntax: Function Declaration")
 
         # Add the correct indentation
         self.blockChecker += 1
@@ -326,14 +328,16 @@ class Parse:
             if self.lookahead.get('type') == 'ar-operators' or \
                 self.lookahead.get('type') == 'com-operators':
                 expr = self.expression(expr[-1])
-                # If next token is log operators, replace with Logical Expr  
-                if self.lookahead != None and \
-                    self.lookahead.get('type') == 'log-operators':
-                    expr = self.expression(expr)
+                break
+
+            # If next token is log operators, replace with Logical Expr  
+            if self.lookahead != None and \
+                self.lookahead.get('type') == 'log-operators':
+                expr = self.expression(expr[-1])
                 break
 
             # Append expression
-            expr.append(self.expression())
+            expr.append(self.expression(expr[-1]))
             # If reached end of file break from loop
             if self.lookahead == None:
                 break
@@ -430,7 +434,9 @@ class Parse:
         tempExpr = []
         # BinaryExpr/ArithmeticExpr <operator> BinaryExpr/ArithmeticExpr
         if expr != None and 'Binary' in expr.get('type') or \
-            expr != None and 'Arithmetic' in expr.get('type'):
+            expr != None and 'Arithmetic' in expr.get('type') or \
+                expr != None and 'Literal' in expr.get('type'):
+            
             tempExpr.append(expr)
             while self.lookahead != None and \
                 self.lookahead.get('type') == 'log-operators':
@@ -447,6 +453,8 @@ class Parse:
                     elif self.lookahead.get('type') == 'ar-operators':
                         # Check for arithmetic expression and pass the last token
                         tempExpr.append(self.arithmeticExpression(lastToken))
+                    else:
+                        tempExpr.append(lastToken)
                 else:
                     raise SyntaxError("Invalid Syntax: Logical Expression")
             ast = {
@@ -493,22 +501,36 @@ class Parse:
         return ast
 
 
-    def CallExpression(self, identifier):
-        
+    def CallExpression(self, identifier = None):
         # Identifier(optionalParams)
-        self.eat('(')
-        if self.lookahead != None and self.lookahead.get('type') == ')':
-            self.eat(')')
-        else:
-            raise SyntaxError("Missing )")
-        if identifier in specialFunc:
+        
+        if self.lookahead.get('type') == 'special-func':
+            input = ''
+            funcId = self.eat('special-func')
+            if self.lookahead.get('type') == '(':
+                self.eat('(')
+            else:
+                raise SyntaxError("Missing (")
+            try:
+                input = self.expression()
+            except:
+                pass
+            if self.lookahead.get('type') == ')':
+                self.eat(')')
+            else:
+                raise SyntaxError("Missing )")
             ast = {
                 'type': 'CallExpression',
-                'funcId': identifier,
-                'input': ''
+                'funcId': funcId,
+                'input': input
             }
             return ast
-        elif identifier in func:
+        elif identifier != None and identifier in func:
+            self.eat('(')
+            if self.lookahead != None and self.lookahead.get('type') == ')':
+                self.eat(')')
+            else:
+                raise SyntaxError("Missing )")
             ast = {
                 'type': 'CallExpression',
                 'funcId': identifier

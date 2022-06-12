@@ -1,6 +1,4 @@
 def test():
-    if 2:
-        3
-    else:
-        6
-    return 5
+    5 and 6
+
+input("hello")

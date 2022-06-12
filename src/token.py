@@ -11,6 +11,7 @@ tokenRegex = [
 
     # -- Special Keywords and Symbols--
     ["special-if", "^(if|elif|else)"],
+    ["special-func", "^(print|input)"],
     ["special-def", "^def"],
     ["return", "^return"],
     [":", "^:"],
