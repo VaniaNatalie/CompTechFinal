@@ -12,9 +12,11 @@ tokenRegex = [
     # -- Special Keywords and Symbols--
     ["special-if", "^(if|elif|else)"],
     ["special-def", "^def"],
+    ["return", "^return"],
     [":", "^:"],
     ["(", "^\("],
     [")", "^\)"],
+    [",", "^,"],
 
     # -- Operators --
     # Comparison Operators
@@ -105,7 +107,6 @@ class Token:
             # For skippable contents
             elif tokenType == None or tokenType == "whitespace" or \
                 tokenType == "indent":
-                print(tokenType, self.s)
                 return self.getNextToken('whitespace')
                 # # If next token after whitespace is statement (\n)
                 # if nextToken != None and nextToken.get('type') == 'statement':

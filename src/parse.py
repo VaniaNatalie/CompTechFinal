@@ -1,8 +1,11 @@
+
 from token import Token
 
 # Storing declared variables
 var = []
 func = []
+funcParams = []
+specialFunc = ["print", "input"]
 
 # Parser
 class Parse:   
@@ -31,46 +34,75 @@ class Parse:
     def statementList(self, blockStatementStopper = None):
         # If it is one statement
         statementList = []
+        self.flag = False
         
         if self.lookahead.get('type') != 'block':
             statementList = [self.statement()]
 
         # If checking for block statement
         if blockStatementStopper != None:
-
+            self.prevTempBlockChecker = 0
             # While not reached end of file and there is indentation
-            while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper):
+            while (self.lookahead != None and self.lookahead.get('type') == blockStatementStopper) \
+                or self.flag == True:
+
+                # If flag = true -> there is another if statement but the block
+                # is already eaten. To make sure we return to the appropriate
+                # scope of the if block-statement, return statementlist according 
+                # to the number of indent of the current if statement
+                if self.flag == True and self.prevTempBlockChecker != 0:
+                    self.prevTempBlockChecker -= 1
+                    return statementList
+                # If self.prevTempBlockChecker == 0, stop return statement,
+                # we are already in the correct scope of the if statement
+                else:
+                    self.flag = False
+
                 tempBlockChecker = 0
                 # blockChecker is updated everytime a statement that requires
                 # indentation is called
                 # Loop through the indentation based on the correct indentation
                 for i in range(self.blockChecker):
+                    # If next token is not block anymore, break
+                    if self.lookahead != None and \
+                        self.lookahead.get('type') != 'block':
+                        break
                     self.eat("block")
                     # Track how many loop there is currently
                     tempBlockChecker += 1
-                    # If next token is not block anymore, break
-                    if self.lookahead.get('type') != 'block':
-                        break
+                
+                # tempBlockChecker == 0 means that there is an if statement but the block
+                # is already eaten, so we can just pass
+                if tempBlockChecker == 0:
+                    pass
                 # If tempBlockChecker < the correct indentation, there are 2 possibilities
                 # 1. Another if statement is called
                 # 2. A syntax error
-                if tempBlockChecker < self.blockChecker:
-                    # If it is if statement
-                    if self.lookahead.get('type') == 'special-if':
-                        # Change current indentation to match
-                        self.blockChecker = tempBlockChecker
-                        return statementList
-                    # Else
-                    else:
-                        raise SyntaxError("Unmatched Indent")
-                
+                elif tempBlockChecker < self.blockChecker:
+                    
+                    # If there is the current indent is < than expected indent
+                    # Set prevTempBlocker to the difference between block checker
+                    # and temp block checker - 1 because we return statementList 
+                    # within the scope
+                    self.prevTempBlockChecker = abs(self.blockChecker - tempBlockChecker - 1)
+                    # Change current indentation to match
+                    self.blockChecker = tempBlockChecker
+                    # Set flag to True to loop again
+                    self.flag = True
+                    return statementList
+                    
                 # If there is still block, raise an indentation error
                 if self.lookahead.get('type') == "block":
                     raise SyntaxError("Unmatched Indent")
                 
                 # Add statement to statement list      
-                statementList.append(self.statement())    
-                
+                statementList.append(self.statement())
+            # If the next statement is another if statement and not in the same
+            # scope, reset
+            if self.lookahead != None and \
+                self.lookahead.get('type') == "special-if":
+                self.blockChecker = 0   
+
         else:
             # If it is multiple statement
             # While we still have tokens, continue to loop (stop if cursor exceeds token)
@@ -86,6 +118,8 @@ class Parse:
             return self.ifStatement()
         elif self.lookahead.get('type') == "special-def":
             return self.functionDeclaration()
+        elif self.lookahead.get('type') == "return":
+            return self.returnStatement()
         elif self.lookahead.get('type') == "identifier":
             return self.variableDeclaration()
         else:
@@ -110,7 +144,6 @@ class Parse:
         body = [] # Content of if statement
         # Add 1 block token to each call of if statement
         self.blockChecker += 1
-        
         # if-type Literal/ArithmeticExpr/BinaryExpr/LogicalExpr:
         # BlockStatement
         ifType = self.eat("special-if").get('value')
@@ -147,7 +180,7 @@ class Parse:
             body.append(self.blockStatement())
         else:
             raise SyntaxError("Block Statement Expected")
-
+        
         ast = {
             'type': 'IfStatement',
             'if-type': ifType,
@@ -183,6 +216,10 @@ class Parse:
                             # Append to params
                             params.append(self.lookahead.get('value'))
                             self.identifier(True)
+                            if self.lookahead.get('type') == ')':
+                                break
+                            # If there are more than 1 param
+                            self.eat(',')
                         else:
                             raise SyntaxError("Duplicate Parameters")
             else:
@@ -210,9 +247,13 @@ class Parse:
         if self.lookahead != None and \
             self.lookahead.get('type') == 'block':
             body.append(self.blockStatement())
+            # for i in range(len(body)):
+            #     if "ReturnStatement" in body[i].get('type'):
+            #         print("hello")
+
         else:
             raise SyntaxError("Block Statement Expected")
-            
+        
         ast = {
             'type': 'FunctionDeclaration',
             'funcId': funcId,
@@ -221,11 +262,28 @@ class Parse:
         }
         return ast
 
+    def returnStatement(self):
+        self.eat("return")
+        value = ''
+        try:
+            value = self.statement()
+        except:
+            raise SyntaxError("Return Expression Expected")
+        ast = {
+            'type': 'ReturnStatement',
+            'value': value,
+        }
+        return ast
 
 
     def variableDeclaration(self):
         tempVar = self.identifier(True)
         tempVarValue = tempVar.get('value')
+
+        # Call expr
+        if tempVar.get('type') == 'CallExpression':
+            return tempVar
+
         if self.lookahead != None:
             # Check if it is variable declaration e.g. identifier = value
             if self.lookahead.get('type') == 'asg-operators' and self.lookahead.get('value') == '=':
@@ -334,7 +392,7 @@ class Parse:
                 'expression': tempExpr
             }
             return ast
-        # If doesn't fulfill syntax 
+        # If doesn't fulfill syntax
         raise SyntaxError("Invalid Syntax: Arithmetic Expression")
 
     def binaryExpression(self, expr):
@@ -407,9 +465,6 @@ class Parse:
             'value': token.get('value')
         }
         return ast
-
-    def CallExpression(self):
-        pass
     
     def identifier(self, declaration = False, function = False):
         token = self.eat('identifier')
@@ -425,11 +480,42 @@ class Parse:
                 func.append(value)
             else:
                 raise SyntaxError("Duplicate Function Name")
+
+        # Checking for call expression
+        if self.lookahead != None and self.lookahead.get('type') == '(' \
+            and function == False:
+            return self.CallExpression(value)
+
         ast = {
             'type': 'Identifier',
             'value': token.get('value')
         }
         return ast
+
+
+    def CallExpression(self, identifier):
+        
+        # Identifier(optionalParams)
+        self.eat('(')
+        if self.lookahead != None and self.lookahead.get('type') == ')':
+            self.eat(')')
+        else:
+            raise SyntaxError("Missing )")
+        if identifier in specialFunc:
+            ast = {
+                'type': 'CallExpression',
+                'funcId': identifier,
+                'input': ''
+            }
+            return ast
+        elif identifier in func:
+            ast = {
+                'type': 'CallExpression',
+                'funcId': identifier
+            }
+            return ast
+        else:
+            raise SyntaxError("Function Doesn't Exist")
     
     def literal(self):
         # Get token type
