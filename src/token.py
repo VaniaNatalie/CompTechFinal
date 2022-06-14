@@ -55,10 +55,13 @@ tokenRegex = [
 # Tokenizer
 class Token:
     def __init__ (self, s):
-        self.s = s
-        self.cursor = 0
-        self.tokenTypePrev = ''
-        self.blockChecker = 0
+        self.s = s # Input string
+        self.cursor = 0 # Current index
+        self.tokenTypePrev = '' # Previous token type
+        self.blockChecker = 0 # Block checking
+        self.line = 0
+        self.prevCol = 0
+        self.col = 0
     
     # Check if tokenType matches with any tokenType stated already in rules (tokenRegex)
     def regexMatch(self, pattern, string):
@@ -67,6 +70,8 @@ class Token:
         if match:
             # Move cursor position to end of matched string
             self.cursor += len(match.group())
+            self.col += self.cursor
+            print(self.col, "colhere")
             # Return the value
             return match.group()
         return None
@@ -98,6 +103,13 @@ class Token:
             if tokenValue == None:
                 continue
             
+            # Add line and reset col every statement
+            if tokenType == "statement":
+                self.line += 1
+                print(self.col, "before")
+                # self.prevCol = self.col
+                # self.col = 0
+            
             # Checking for block
             if self.checkBlockStatement(tokenType, tokenValue):
                 self.tokenTypePrev = tokenType
@@ -119,6 +131,7 @@ class Token:
             # For empty lines
             elif self.tokenTypePrev == "statement" and tokenType == "statement":
                 tokenType = None
+                self.line += 1
                 # Get next statement to skip
                 return self.getNextToken('whitespace')
                 
@@ -127,6 +140,10 @@ class Token:
                 # Store current token type 
                 self.tokenTypePrev = tokenType
                 ast = {'type': tokenType, 'value': tokenValue}
-                
                 return ast
         raise ValueError("Unexpected Token {}".format(self.s[0]))
+
+    # Get line and col for error handling
+    def getIndex(self):
+        print(self.col)
+        return self.line, self.col

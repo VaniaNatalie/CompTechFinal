@@ -1,4 +1,4 @@
 def test():
-    5 and 6
+    5 and
 
-input("hello")
+test()

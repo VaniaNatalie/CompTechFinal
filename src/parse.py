@@ -93,7 +93,8 @@ class Parse:
                     
                 # If there is still block, raise an indentation error
                 if self.lookahead.get('type') == "block":
-                    raise SyntaxError("Unmatched Indent")
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Unmatched Indent Line: {} Col: {}".format(line, col))
                 
                 # Add statement to statement list      
                 statementList.append(self.statement())
@@ -117,7 +118,7 @@ class Parse:
         if self.lookahead.get('type') == "special-if":
             return self.ifStatement()
         elif self.lookahead.get('type') == "special-func":
-            return self.CallExpression()
+            return self.callExpression()
         elif self.lookahead.get('type') == "special-def":
             return self.functionDeclaration()
         elif self.lookahead.get('type') == "return":
@@ -139,7 +140,8 @@ class Parse:
                 'body': body
             }
             return ast
-        raise SyntaxError("Invalid Syntax")
+        line, col = self.t.getIndex()
+        raise SyntaxError("Invalid Syntax: BLock Statement Line: {} Col: {}".format(line, col))
 
     def ifStatement(self):
         expr = [] # What to test in the if statement
@@ -165,7 +167,8 @@ class Parse:
                 elif 'Literal' in expr[-1].get('type'):
                     pass
                 else:
-                    raise SyntaxError("Invalid Syntax: If Statement")
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Invalid Syntax: If Statement Line: {} Col: {}".format(line, col))
 
         # Check for :
         if self.lookahead != None and \
@@ -174,14 +177,16 @@ class Parse:
             self.eat(':')
             self.eat('statement')
         else:
-            raise SyntaxError("Missing :")
+            line, col = self.t.getIndex()
+            raise SyntaxError("Missing : Line: {} Col: {}".format(line, col))
         
         # Check for block statement
         if self.lookahead != None and \
             self.lookahead.get('type') == 'block':
             body.append(self.blockStatement())
         else:
-            raise SyntaxError("Block Statement Expected")
+            line, col = self.t.getIndex()
+            raise SyntaxError("Block Statement Expected Line: {} Col: {}".format(line, col))
         
         ast = {
             'type': 'IfStatement',
@@ -204,7 +209,8 @@ class Parse:
                 # Check if identifier has been declared for function
                 funcId = self.identifier(True, True)
             else:
-                raise SyntaxError("Identifier Expected")
+                line, col = self.t.getIndex()
+                raise SyntaxError("Identifier Expected Line: {} Col: {}".format(line, col))
             # Function Declaration syntax
             if self.lookahead != None and \
                 self.lookahead.get('type') == '(':
@@ -223,25 +229,30 @@ class Parse:
                             # If there are more than 1 param
                             self.eat(',')
                         else:
-                            raise SyntaxError("Duplicate Parameters")
+                            line, col = self.t.getIndex()
+                            raise SyntaxError("Duplicate Parameters Line: {} Col: {}".format(line, col))
             else:
-                raise SyntaxError("Missing (")
+                line, col = self.t.getIndex()
+                raise SyntaxError("Missing ( Line: {} Col: {}".format(line, col))
             
             # Function Declaration syntax
             if self.lookahead != None and \
                 self.lookahead.get('type') == ')':
                 self.eat(')')
             else:
-                raise SyntaxError("Missing )")
+                line, col = self.t.getIndex()
+                raise SyntaxError("Missing ) Line: {} Col: {}".format(line, col))
 
             if self.lookahead != None and \
                 self.lookahead.get('type') == ':':
                 self.eat(':')
                 self.eat('statement')
             else:
-                raise SyntaxError("Missing :")
+                line, col = self.t.getIndex()
+                raise SyntaxError("Missing : Line: {} Col: {}".format(line, col))
         else:
-            raise SyntaxError("Invalid Syntax: Function Declaration")
+            line, col = self.t.getIndex()
+            raise SyntaxError("Invalid Syntax: Function Declaration Line: {} Col: {}".format(line, col))
 
         # Add the correct indentation
         self.blockChecker += 1
@@ -254,7 +265,8 @@ class Parse:
             #         print("hello")
 
         else:
-            raise SyntaxError("Block Statement Expected")
+            line, col = self.t.getIndex()
+            raise SyntaxError("Block Statement Expected Line: {} Col: {}".format(line, col))
         
         ast = {
             'type': 'FunctionDeclaration',
@@ -270,7 +282,8 @@ class Parse:
         try:
             value = self.statement()
         except:
-            raise SyntaxError("Return Expression Expected")
+            line, col = self.t.getIndex()
+            raise SyntaxError("Return Expression Expected Line: {} Col: {}".format(line, col))
         ast = {
             'type': 'ReturnStatement',
             'value': value,
@@ -305,7 +318,8 @@ class Parse:
                     return ast
                 # If there is no value, raise error
                 except:
-                    raise SyntaxError("Value Expected")
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Value Expected Line: {} Col: {}".format(line, col))
 
         # If not variable declaration, check if var exists
         if tempVarValue in var:
@@ -313,7 +327,8 @@ class Parse:
             return self.expressionStatement(tempVar)
         # If it doesn't exist, raise error
         else:
-            raise SyntaxError("Variable doesn't exist")
+            line, col = self.t.getIndex()
+            raise SyntaxError("Variable doesn't exist Line: {} Col: {}".format(line, col))
 
     
     def expressionStatement(self, identifier=None):
@@ -389,7 +404,8 @@ class Parse:
                         pass
                 else:
                     # If doesn't fulfill syntax
-                    raise SyntaxError("Invalid Syntax: Arithmetic Expression")
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Invalid Syntax: Arithmetic Expression Line: {} Col: {}".format(line, col))
 
             ast = {
                 'type': 'ArithmeticExpression',
@@ -397,7 +413,8 @@ class Parse:
             }
             return ast
         # If doesn't fulfill syntax
-        raise SyntaxError("Invalid Syntax: Arithmetic Expression")
+        line, col = self.t.getIndex()
+        raise SyntaxError("Invalid Syntax: Arithmetic Expression Line: {} Col: {}".format(line, col))
 
     def binaryExpression(self, expr):
         tempExpr = []
@@ -420,7 +437,8 @@ class Parse:
                         pass
                 else:
                     # If doesn't fulfill syntax
-                    raise SyntaxError("Invalid Syntax: Binary Expression")
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Invalid Syntax: Binary Expression Line: {} Col: {}".format(line, col))
 
             ast = {
                 'type': 'BinaryExpression',
@@ -428,7 +446,8 @@ class Parse:
             }
             return ast
         # If doesn't fulfill syntax 
-        raise SyntaxError("Invalid Syntax: Binary Expression")
+        line, col = self.t.getIndex()
+        raise SyntaxError("Invalid Syntax: Binary Expression Line: {} Col: {}".format(line, col))
         
     def logicalExpression(self, expr):
         tempExpr = []
@@ -456,14 +475,16 @@ class Parse:
                     else:
                         tempExpr.append(lastToken)
                 else:
-                    raise SyntaxError("Invalid Syntax: Logical Expression")
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Invalid Syntax: Logical Expression Line: {} Col: {}".format(line, col))
             ast = {
                 'type': 'LogicalExpression',
                 'expression': tempExpr
             }
             return ast
         # If doesn't fulfill syntax 
-        raise SyntaxError("Invalid Syntax: Logical Expression")
+        line, col = self.t.getIndex()
+        raise SyntaxError("Invalid Syntax: Logical Expression Line: {} Col: {}".format(line, col))
 
 
     def operator(self, operator):
@@ -480,19 +501,21 @@ class Parse:
         # Skip checking for var declaration
         if declaration == False:
             if value not in var:
-                raise SyntaxError("Variable Not Declared")
+                line, col = self.t.getIndex()
+                raise SyntaxError("Variable Not Declared Line: {} Col: {}".format(line, col))
         # Checking for function declaration
         if function == True:
             # If function id has not been used
             if function not in func:
                 func.append(value)
             else:
-                raise SyntaxError("Duplicate Function Name")
+                line, col = self.t.getIndex()
+                raise SyntaxError("Duplicate Function Name Line: {} Col: {}".format(line, col))
 
         # Checking for call expression
         if self.lookahead != None and self.lookahead.get('type') == '(' \
             and function == False:
-            return self.CallExpression(value)
+            return self.callExpression(value)
 
         ast = {
             'type': 'Identifier',
@@ -501,43 +524,50 @@ class Parse:
         return ast
 
 
-    def CallExpression(self, identifier = None):
+    def callExpression(self, identifier = None):
         # Identifier(optionalParams)
         
         if self.lookahead.get('type') == 'special-func':
             input = ''
             funcId = self.eat('special-func')
-            if self.lookahead.get('type') == '(':
+            if self.lookahead != None and \
+                self.lookahead.get('type') == '(':
                 self.eat('(')
             else:
-                raise SyntaxError("Missing (")
+                line, coll = self.t.getIndex()
+                raise SyntaxError("Missing ( Line: {} Col: {}".format(line, col))
             try:
                 input = self.expression()
             except:
                 pass
-            if self.lookahead.get('type') == ')':
+            if self.lookahead != None and \
+                self.lookahead.get('type') == ')':
                 self.eat(')')
             else:
-                raise SyntaxError("Missing )")
-            ast = {
+                line, col = self.t.getIndex()
+                raise SyntaxError("Missing ) Line: {} Col: {}".format(line, col))
+            ast = { 
                 'type': 'CallExpression',
                 'funcId': funcId,
                 'input': input
             }
             return ast
+        # If it is other function calling
         elif identifier != None and identifier in func:
             self.eat('(')
             if self.lookahead != None and self.lookahead.get('type') == ')':
                 self.eat(')')
             else:
-                raise SyntaxError("Missing )")
+                line, col = self.t.getIndex()
+                raise SyntaxError("Missing ) Line: {} Col: {}".format(line, col))
             ast = {
                 'type': 'CallExpression',
                 'funcId': identifier
             }
             return ast
         else:
-            raise SyntaxError("Function Doesn't Exist")
+            line, col = self.t.getIndex()
+            raise SyntaxError("Function Doesn't Exist Line: {} Col: {}".format(line, col))
     
     def literal(self):
         # Get token type
@@ -553,7 +583,8 @@ class Parse:
         # If none of the token type matches
         else:
             print(tokenType)
-            raise ValueError("Unsupported Literal Type")
+            line, col = self.t.getIndex()
+            raise ValueError("Unsupported Literal Type Line: {} Col: {}".format(line, col))
 
     def numericalLiteral(self):
         token = self.eat('NUMBER')   
@@ -593,11 +624,13 @@ class Parse:
         token = self.lookahead
         # If reached end of file
         if token == None:
-            raise ValueError("Reached End of File") 
+            line, col = self.t.getIndex()
+            raise ValueError("Reached End of File Line: {} Col: {}".format(line, col)) 
         # Different token type from input
         if token.get('type') != tokenType:
             print(tokenType, token)
-            raise ValueError("Unmatched Token Value")
+            line, col = self.t.getIndex()
+            raise ValueError("Unmatched Token Value Line: {} Col: {}".format(line, col))
         # Get the next text
         self.lookahead = self.t.getNextToken('eat')
         return token
