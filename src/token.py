@@ -59,9 +59,10 @@ class Token:
         self.cursor = 0 # Current index
         self.tokenTypePrev = '' # Previous token type
         self.blockChecker = 0 # Block checking
-        self.line = 0
-        self.prevCol = 0
-        self.col = 0
+        self.prevLine = 0 # Previous line index
+        self.line = 1 # Current line index, start count from 1
+        self.prevCol = 0 # Previous column index
+        self.col = 1 # Current col index, start count from 1
     
     # Check if tokenType matches with any tokenType stated already in rules (tokenRegex)
     def regexMatch(self, pattern, string):
@@ -70,8 +71,9 @@ class Token:
         if match:
             # Move cursor position to end of matched string
             self.cursor += len(match.group())
+            # Add col based on cursor
             self.col += self.cursor
-            print(self.col, "colhere")
+            print(self.col, match.group(), "here")
             # Return the value
             return match.group()
         return None
@@ -105,10 +107,12 @@ class Token:
             
             # Add line and reset col every statement
             if tokenType == "statement":
+                # Store previous line and col
+                self.prevLine = self.line
+                self.prevCol = self.col - 1 # -1 because cursor is always ahead by 1
+
                 self.line += 1
-                print(self.col, "before")
-                # self.prevCol = self.col
-                # self.col = 0
+                self.col = 1
             
             # Checking for block
             if self.checkBlockStatement(tokenType, tokenValue):
@@ -131,7 +135,6 @@ class Token:
             # For empty lines
             elif self.tokenTypePrev == "statement" and tokenType == "statement":
                 tokenType = None
-                self.line += 1
                 # Get next statement to skip
                 return self.getNextToken('whitespace')
                 
@@ -145,5 +148,12 @@ class Token:
 
     # Get line and col for error handling
     def getIndex(self):
-        print(self.col)
-        return self.line, self.col
+        # If prev token type is statement (means error occurs at the 
+        # end of statement), call prev line and prev col (as line and col
+        # is added and reset respectively everytime a statement ends, calling
+        # line and col will not display the index where the orrur occurs)
+        if self.tokenTypePrev == 'statement':
+            return self.prevLine, self.prevCol
+        # Else prev token type not statement, return current index
+        else:
+            return self.line, self.col
