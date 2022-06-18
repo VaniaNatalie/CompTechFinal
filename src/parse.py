@@ -157,12 +157,17 @@ class Parse:
             if self.lookahead != None:
                 # If next token = ar operators, replace with Arithmetic Expr
                 # If next token = com operators, replace with Binary Expr
-                if self.lookahead.get('type') == ('ar-operators' or 'com-operators'):
+                if self.lookahead.get('type') == 'ar-operators' or \
+                    self.lookahead.get('type') == 'com-operators':
                     expr = self.expression(expr[-1])
                     # If next token is log operators, replace with Logical Expr  
                     if self.lookahead != None and \
                         self.lookahead.get('type') == 'log-operators':
                         expr = self.expression(expr)
+                # If next token is log operators, replace with Logical Expr  
+                elif self.lookahead != None and \
+                    self.lookahead.get('type') == 'log-operators':
+                    expr = self.expression(expr[-1])
                 # If statement with literal
                 elif 'Literal' in expr[-1].get('type'):
                     pass
@@ -343,6 +348,10 @@ class Parse:
             if self.lookahead.get('type') == 'ar-operators' or \
                 self.lookahead.get('type') == 'com-operators':
                 expr = self.expression(expr[-1])
+                # If next token is log operators, replace with Logical Expr  
+                if self.lookahead != None and \
+                    self.lookahead.get('type') == 'log-operators':
+                    expr = self.expression(expr)
                 break
 
             # If next token is log operators, replace with Logical Expr  
@@ -484,6 +493,7 @@ class Parse:
             return ast
         # If doesn't fulfill syntax 
         line, col = self.t.getIndex()
+        col -= len(self.lookahead.get('value'))
         raise SyntaxError("Invalid Syntax: Logical Expression Line: {} Col: {}".format(line, col))
 
 
@@ -534,7 +544,7 @@ class Parse:
                 self.lookahead.get('type') == '(':
                 self.eat('(')
             else:
-                line, coll = self.t.getIndex()
+                line, col = self.t.getIndex()
                 raise SyntaxError("Missing ( Line: {} Col: {}".format(line, col))
             try:
                 input = self.expression()

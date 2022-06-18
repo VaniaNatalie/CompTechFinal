@@ -62,7 +62,7 @@ class Token:
         self.prevLine = 0 # Previous line index
         self.line = 1 # Current line index, start count from 1
         self.prevCol = 0 # Previous column index
-        self.col = 1 # Current col index, start count from 1
+        self.col = 0 # Current col index, start count from 1
     
     # Check if tokenType matches with any tokenType stated already in rules (tokenRegex)
     def regexMatch(self, pattern, string):
@@ -73,7 +73,6 @@ class Token:
             self.cursor += len(match.group())
             # Add col based on cursor
             self.col += self.cursor
-            print(self.col, match.group(), "here")
             # Return the value
             return match.group()
         return None
@@ -112,7 +111,7 @@ class Token:
                 self.prevCol = self.col - 1 # -1 because cursor is always ahead by 1
 
                 self.line += 1
-                self.col = 1
+                self.col = 0
             
             # Checking for block
             if self.checkBlockStatement(tokenType, tokenValue):
