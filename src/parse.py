@@ -38,7 +38,7 @@ class Parse:
         
         if self.lookahead.get('type') != 'block':
             statementList = [self.statement()]
-
+        
         # If checking for block statement
         if blockStatementStopper != None:
             self.prevTempBlockChecker = 0
@@ -98,11 +98,13 @@ class Parse:
                 
                 # Add statement to statement list      
                 statementList.append(self.statement())
-            # If the next statement is another if statement and not in the same
+            # If the next statement is another if/def statement  and not in the same
             # scope, reset
-            if self.lookahead != None and \
-                self.lookahead.get('type') == "special-if":
-                self.blockChecker = 0   
+            # if (self.lookahead != None and \
+            #     self.lookahead.get('type') == "special-if") or \
+            #     (self.lookahead != None and \
+            #     self.lookahead.get('type') == "special-def"):
+            self.blockChecker = 0   
 
         else:
             # If it is multiple statement
@@ -117,8 +119,6 @@ class Parse:
         #     return self.blockStatement()
         if self.lookahead.get('type') == "special-if":
             return self.ifStatement()
-        elif self.lookahead.get('type') == "special-func":
-            return self.callExpression()
         elif self.lookahead.get('type') == "special-def":
             return self.functionDeclaration()
         elif self.lookahead.get('type') == "return":
@@ -300,8 +300,8 @@ class Parse:
         tempVar = self.identifier(True)
         tempVarValue = tempVar.get('value')
 
-        # Call expr
-        if tempVar.get('type') == 'CallExpression':
+        # Call expression (inside expr statement)
+        if tempVar.get('type') == 'ExpressionStatement':
             return tempVar
 
         if self.lookahead != None:
@@ -336,9 +336,12 @@ class Parse:
             raise SyntaxError("Variable doesn't exist Line: {} Col: {}".format(line, col))
 
     
-    def expressionStatement(self, identifier=None):
+    def expressionStatement(self, identifier=None, call=False):
         if identifier != None:
-            expr = [identifier]
+            if call == True:
+                expr = [self.callExpression(identifier)]
+            else:
+                expr = [identifier]
         else:
             expr = [self.expression()]
         # Loop while hasn't reached end of file or end of statement 
@@ -387,6 +390,8 @@ class Parse:
             return self.binaryExpression(expr)
         elif self.lookahead.get('type') == 'log-operators':
             return self.logicalExpression(expr)
+        elif self.lookahead.get('type') == "special-func":
+            return self.callExpression()
         elif self.lookahead.get('type') == 'identifier':
             return self.identifier()
         else:
@@ -525,7 +530,7 @@ class Parse:
         # Checking for call expression
         if self.lookahead != None and self.lookahead.get('type') == '(' \
             and function == False:
-            return self.callExpression(value)
+            return self.expressionStatement(value, call = True)
 
         ast = {
             'type': 'Identifier',

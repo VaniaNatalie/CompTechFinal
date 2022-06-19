@@ -1,2 +1,9 @@
-print()
-4+3
+def hello():
+    if 4:
+        8
+        else:
+            9
+
+hello()
+def helloo():
+    return 5
