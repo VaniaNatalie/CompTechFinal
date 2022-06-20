@@ -1,5 +1,4 @@
 
-from cmath import exp
 from token import Token
 
 # Storing declared variables
@@ -159,15 +158,15 @@ class Parse:
                 # If next token = com operators, replace with Binary Expr
                 if self.lookahead.get('type') == 'ar-operators' or \
                     self.lookahead.get('type') == 'com-operators':
-                    expr = self.expression(expr[-1])
+                    expr = [self.expression(expr[-1])]
                     # If next token is log operators, replace with Logical Expr  
                     if self.lookahead != None and \
                         self.lookahead.get('type') == 'log-operators':
-                        expr = self.expression(expr)
+                        expr = [self.expression(expr)]
                 # If next token is log operators, replace with Logical Expr  
                 elif self.lookahead != None and \
                     self.lookahead.get('type') == 'log-operators':
-                    expr = self.expression(expr[-1])
+                    expr = [self.expression(expr[-1])]
                 # If statement with literal
                 elif 'Literal' in expr[-1].get('type'):
                     pass
@@ -339,7 +338,8 @@ class Parse:
     def expressionStatement(self, identifier=None, call=False):
         if identifier != None:
             if call == True:
-                expr = [self.callExpression(identifier)]
+                expr =[self.callExpression(identifier)]
+                return expr
             else:
                 expr = [identifier]
         else:
@@ -350,19 +350,18 @@ class Parse:
             # If next token = com operators, replace with Binary Expr
             if self.lookahead.get('type') == 'ar-operators' or \
                 self.lookahead.get('type') == 'com-operators':
-                expr = self.expression(expr[-1])
+                expr = [self.expression(expr[-1])]
                 # If next token is log operators, replace with Logical Expr  
                 if self.lookahead != None and \
                     self.lookahead.get('type') == 'log-operators':
-                    expr = self.expression(expr)
+                    expr = [self.expression(expr)]
                 break
 
             # If next token is log operators, replace with Logical Expr  
             if self.lookahead != None and \
                 self.lookahead.get('type') == 'log-operators':
-                expr = self.expression(expr[-1])
+                expr = [self.expression(expr[-1])]
                 break
-
             # Append expression
             expr.append(self.expression(expr[-1]))
             # If reached end of file break from loop
@@ -526,7 +525,6 @@ class Parse:
             else:
                 line, col = self.t.getIndex()
                 raise SyntaxError("Duplicate Function Name Line: {} Col: {}".format(line, col))
-
         # Checking for call expression
         if self.lookahead != None and self.lookahead.get('type') == '(' \
             and function == False:
@@ -551,10 +549,13 @@ class Parse:
             else:
                 line, col = self.t.getIndex()
                 raise SyntaxError("Missing ( Line: {} Col: {}".format(line, col))
-            try:
-                input = self.expression()
-            except:
-                pass
+            if self.lookahead.get('type') == 'identifier':
+                input = self.identifier(True)
+            else:
+                try:
+                    input = self.expression()
+                except:
+                    pass
             if self.lookahead != None and \
                 self.lookahead.get('type') == ')':
                 self.eat(')')
@@ -569,6 +570,7 @@ class Parse:
             return ast
         # If it is other function calling
         elif identifier != None and identifier in func:
+            
             self.eat('(')
             if self.lookahead != None and self.lookahead.get('type') == ')':
                 self.eat(')')
@@ -577,7 +579,7 @@ class Parse:
                 raise SyntaxError("Missing ) Line: {} Col: {}".format(line, col))
             ast = {
                 'type': 'CallExpression',
-                'funcId': identifier
+                'funcId': identifier,
             }
             return ast
         else:

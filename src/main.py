@@ -13,8 +13,8 @@ print(parsedData)
 # parsedJson = json.dumps(parsedData)
 
 # Converting data
-c = Convert(parsedData)
-print(c.convert())
+# c = Convert(parsedData)
+# print(c.convert())
 
 # for key, val in parsedData:
 #     print(val)
