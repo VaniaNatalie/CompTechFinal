@@ -158,15 +158,15 @@ class Parse:
                 # If next token = com operators, replace with Binary Expr
                 if self.lookahead.get('type') == 'ar-operators' or \
                     self.lookahead.get('type') == 'com-operators':
-                    expr = [self.expression(expr[-1])]
+                    expr = self.expression(expr[-1])
                     # If next token is log operators, replace with Logical Expr  
                     if self.lookahead != None and \
                         self.lookahead.get('type') == 'log-operators':
-                        expr = [self.expression(expr)]
+                        expr = self.expression(expr)
                 # If next token is log operators, replace with Logical Expr  
                 elif self.lookahead != None and \
                     self.lookahead.get('type') == 'log-operators':
-                    expr = [self.expression(expr[-1])]
+                    expr = self.expression(expr[-1])
                 # If statement with literal
                 elif 'Literal' in expr[-1].get('type'):
                     pass

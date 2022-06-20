@@ -1,3 +1,16 @@
-def hello():
-    return 4
-print(hello())
+def test(var1):
+    if 2<3:
+        if 5<4:
+            return 'hai'
+    elif 2<3:
+        return 3+4
+    else: 
+        return 3-5
+
+print('hai')
+var1 = 'hai'
+
+def hai():
+    return True
+
+input('hai')
