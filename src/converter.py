@@ -1,4 +1,5 @@
-import enum 
+import enum
+
 
 class Syntax(enum.Enum):
     Program = "Program"
@@ -16,7 +17,7 @@ class Convert:
         self.indent = 5
 
     def create_header(self):
-        return '#include <iostream>\nusing namespace std;\n\n'
+        return '#include <iostream>\nusing namespace std;\n'
 
     def create_main(self, statement):
         res = ['\n\nint main(void) {\n']
@@ -24,6 +25,12 @@ class Convert:
         for i in statement.get('body'):
             if i['type'] == "FunctionDeclaration":
                 res.append("%s%s();\n" % (self.indent * " ",self.create_identifier(i['funcId'])))
+            if i['type'] == 'VariableDeclaration':
+                res.append(self.variabledeclaration(i))
+            if i['type'] == 'ExpressionStatement':
+                for j in i['expression']:
+                    if j['type'] == 'CallExpression':
+                        res.append("{}{}\n".format(self.indent * " ", self.callexpression(j)))
         
         res.append(f'{self.indent * " "}return 0;\n')
         res.append('}')
@@ -39,7 +46,23 @@ class Convert:
         return Syntax(statement["type"]) in Statements
 
     def create_identifier(self, node):
-        return str(node["value"])
+        value = str(node['value'])
+        if value == "print":
+            value = value.replace('print', 'cout <<')
+        if value == 'input':
+            value = value.replace('input', 'cin >>')   
+        return value
+
+    def create_input(self, node):
+        value = str(node['value'])
+        value_type = str(node['type'])
+        if value_type == 'BooleanLiteral':
+            value = value.lower()
+        if value_type == "StringLiteral":
+            value = '"{}"'.format(value)
+        if value_type == 'CallExpression':
+            value = '{}()'.format(value)
+        return value
     
     def create_function_param(self, node):
         params = []
@@ -50,37 +73,45 @@ class Convert:
 
     def create_statement(self, statement):
         node_type = statement["type"]
+   
         if node_type.lower().endswith('expression'):
             return self.create_expression(statement)
         attr = getattr(self, node_type.lower())
-        # print(attr())
-        # print(attr)
         return attr(statement)
 
     def create_expression(self, expr):
-        node_type = expr["type"]
-        print(node_type)
+        node_type = expr['type']
         attr = getattr(self, node_type.lower())
+     
         return attr(expr)
 
     def program(self, statement):
         res = []
         main_res = []
         res.append(self.create_header())
+        call_expression = ''
         for i in statement.get('body'):
-            # print(i)
-            res += self.create_statement(i)
+            if i['type'] == 'ExpressionStatement':
+                for k in i['expression']:
+                    if k['type'] == 'CallExpression':
+                       call_expression = k['type']
+                continue
+            if i['type'] != 'VariableDeclaration' or call_expression != 'CallExpression':
+                res += self.create_statement(i)
+            else:
+                pass
         for j in self.create_main(statement):
             main_res += j
         final_res = res + main_res
         return "".join(final_res)
 
-    def functiondeclaration(self, statement):
-        return f"void {self.create_identifier(statement['funcId'])}{self.create_function_body(statement)}" 
+    def functiondeclaration(self, statement): 
+    
+        return f"\nvoid {self.create_identifier(statement['funcId'])}{self.create_function_body(statement)}" 
     
     def create_function_body(self, node):
         body_res = []
-        print(node['body'])
+        # print(node['body'])
         for i in node.get('body'):
             body_res += self.create_statement(i)
         body = "".join(body_res)
@@ -90,7 +121,7 @@ class Convert:
 
     def create_if_body(self, node):
         body_res = []
-        print(node)
+        # print(node)
         for i in node.get('body'):
             body_res += self.create_statement(i)
     
@@ -123,10 +154,13 @@ class Convert:
         return "".join(res)
 
     def expressionstatement(self, statement):
-        return self.create_statement(statement['expression'])
+        res = []
+        for i in statement.get('expression'):
+            res += self.create_expression(i)
+        return "".join(res)
 
     def returnstatement(self, statement):
-        result = f'{self.indent * " "}'
+        result = f'{self.indent * ""}'
         if statement['value']:
             result += "return {};".format(self.create_expression(statement['value']))
         else:
@@ -136,17 +170,46 @@ class Convert:
     def arithmeticexpression(self, expr):
         res = []
         for i in expr.get('expression'):
-            res += self.create_statement(i)
+        #     print(i)
+            res.append(self.create_statement(i))
         return "".join(res)
 
+    def callexpression(self, expr):
+        res = f'{self.indent * ""}'
+        # print(expr['input']['type'])
+
+        res += '{} {};'.format(self.create_identifier(expr['funcId']), self.create_input(expr['input']))
+        return res
+
+    def variabledeclaration(self, statement):
+        var_type = ''
+        variable_name = statement['variable']
+        variable_value = self.create_expression(statement['value'])
+        for i in statement['value']['expression']:
+            variable_type = i['type']
+        if variable_type == 'NumericalLiteral':
+            var_type += 'int'
+        if variable_type == 'StringLiteral':
+            var_type += 'string'
+        if variable_type == 'BooleanLiteral':
+            var_type += 'bool'
+        res = f'{self.indent * " "}'
+        res += '{} {} = {};\n'.format(var_type, variable_name, variable_value)
+        return res
+
     def numericalliteral(self, node):
-        return str(node["value"])
+        res = str(node["value"])
+        return res
 
     def operator(self, node):
-        return str(node['value'])
+        res = str(node["value"])
+        return res
 
     def stringliteral(self, node):
         return '"{}"'.format(str(node['value']))
+
+    def booleanliteral(self, node):
+        return str(node['value']).lower()
 
     def convert(self):
         if self.check_statement(self.ast):
