@@ -1,12 +1,19 @@
-def test(var1, var2):
-    if 2<3:
-        print('hai')
-    else:
-        return 5-3
-
-
-
 def hai():
     return True
 
-hai()
+def test(var1, var2, var3):
+    if 2<3:
+        if 5<4:
+            print('hai')
+    elif 2<3:
+        print(hai())
+    else: 
+        return 3-5
+
+print(test('hai', 'haii', 'hello'))
+test(8, 9, 12)
+print('hai')
+var1 = 'hai'
+
+print(hai())
+input('hai')
