@@ -347,6 +347,8 @@ class Parse:
             # If it is call expression, directly return the ast
             if call == True:
                 expr = [self.callExpression(identifier)]
+                if self.lookahead != None and self.lookahead.get('type') == "statement":
+                    self.eat('statement')
                 ast = {
                     'type': 'ExpressionStatement',
                     'expression': expr
