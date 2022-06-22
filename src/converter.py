@@ -205,9 +205,12 @@ class Convert:
         res = f'{self.indent * ""}'
         # print(expr['input']['type'])
 
+        # if print() or input() is called
         if 'funcId' in expr:
+            # if it has parameter 
             if 'expression' in expr['input']:
                 for i in expr['input']['expression']:
+                    # if only one parameter
                     if len(i['params']) == 1:
                         value_type = i['params'][0]['type']
                         value = i['params'][0]['value']
@@ -216,8 +219,9 @@ class Convert:
                         if value_type == 'BooleanLiteral':
                             value = value.lower()
                         res += '{} {}({});'.format(self.create_identifier(expr['funcId']), i['value'], value)
-                        
+                    # more than one parameter 
                     else:
+                        # to store the parameter
                         store_value = []
                         for j in i['params']:
                             value_type = j['type']
@@ -227,14 +231,20 @@ class Convert:
                             if value_type == 'BooleanLiteral':
                                 value = value.lower()
                             store_value.append(value)
+                        # join the array's value and make a string sep with commas
                         joined_value = ', '.join(store_value)
                         res += '{} {}({});'.format(self.create_identifier(expr['funcId']), i['value'], joined_value)
+            # no parameter
             else:
                 res += '{} {};'.format(self.create_identifier(expr['funcId']), self.create_input(expr['input']))
+        # no print() or input() called
         else:
+            # no params
             if len(expr['params']) == 0:
                 res += '{}();'.format(expr['value'])
+            # has params
             else:
+                # if there's only one param
                 if len(expr['params']) == 1:
                     value_type = expr['params'][0]['type']
                     value = expr['params'][0]['value']
@@ -243,7 +253,9 @@ class Convert:
                     if value_type == 'BooleanLiteral':
                         value = value.lower()
                     res += '{}({});'.format(expr['value'], value)
+                # has more than one param
                 else:
+                    # to store the parameter
                     store_value = []
                     for i in expr['params']:
                         value_type = i['type']
@@ -253,9 +265,9 @@ class Convert:
                         if value_type == 'BooleanLiteral':
                             value = value.lower()
                         store_value.append(value)
+                    # join the array's value and make a string sep with commas
                     joined_value = ', '.join(store_value)
-                    res += '{}({});'.format(expr['value'], joined_value)
-                        
+                    res += '{}({});'.format(expr['value'], joined_value)               
         return res
 
     # Variable declaration
