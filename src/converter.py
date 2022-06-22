@@ -63,14 +63,20 @@ class Convert:
 
     # Function to help format the input
     def create_input(self, node):
-        value = str(node['value'])
         value_type = str(node['type'])
-        if value_type == 'BooleanLiteral':
-            value = value.lower()
-        if value_type == "StringLiteral":
-            value = '"{}"'.format(value)
-        if value_type == 'CallExpression':
+        if value_type == 'ExpressionStatement':
+            for i in node['expression']:
+                variable_type = i['type']
+
+                if variable_type == 'CallExpression':
+                    value = i['value']
+                continue
+
             value = '{}()'.format(value)
+        if value_type == 'BooleanLiteral':
+            value = str(node['value']).lower()
+        if value_type == "StringLiteral":
+            value = '"{}"'.format(str(node['value']))
         return value
     
     # Function to create function params
@@ -198,7 +204,58 @@ class Convert:
     def callexpression(self, expr):
         res = f'{self.indent * ""}'
         # print(expr['input']['type'])
-        res += '{} {};'.format(self.create_identifier(expr['funcId']), self.create_input(expr['input']))
+
+        if 'funcId' in expr:
+            if 'expression' in expr['input']:
+                for i in expr['input']['expression']:
+                    if len(i['params']) == 1:
+                        value_type = i['params'][0]['type']
+                        value = i['params'][0]['value']
+                        if value_type == 'StringLiteral':
+                            value = '"{}"'.format(value)
+                        if value_type == 'BooleanLiteral':
+                            value = value.lower()
+                        res += '{} {}({});'.format(self.create_identifier(expr['funcId']), i['value'], value)
+                        
+                    else:
+                        store_value = []
+                        for j in i['params']:
+                            value_type = j['type']
+                            value = j['value']
+                            if value_type == 'StringLiteral':
+                                value = '"{}"'.format(value)
+                            if value_type == 'BooleanLiteral':
+                                value = value.lower()
+                            store_value.append(value)
+                        joined_value = ', '.join(store_value)
+                        res += '{} {}({});'.format(self.create_identifier(expr['funcId']), i['value'], joined_value)
+            else:
+                res += '{} {};'.format(self.create_identifier(expr['funcId']), self.create_input(expr['input']))
+        else:
+            if len(expr['params']) == 0:
+                res += '{}();'.format(expr['value'])
+            else:
+                if len(expr['params']) == 1:
+                    value_type = expr['params'][0]['type']
+                    value = expr['params'][0]['value']
+                    if value_type == 'StringLiteral':
+                        value = '"{}"'.format(value)
+                    if value_type == 'BooleanLiteral':
+                        value = value.lower()
+                    res += '{}({});'.format(expr['value'], value)
+                else:
+                    store_value = []
+                    for i in expr['params']:
+                        value_type = i['type']
+                        value = i['value']
+                        if value_type == 'StringLiteral':
+                            value = '"{}"'.format(value)
+                        if value_type == 'BooleanLiteral':
+                            value = value.lower()
+                        store_value.append(value)
+                    joined_value = ', '.join(store_value)
+                    res += '{}({});'.format(expr['value'], joined_value)
+                        
         return res
 
     # Variable declaration
