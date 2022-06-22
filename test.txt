@@ -1,16 +1,4 @@
-def test(var1):
-    if 2<3:
-        if 5<4:
-            return 'hai'
-    elif 2<3:
-        return 3+4
-    else: 
-        return 3-5
-
-print('hai')
-var1 = 'hai'
-
-def hai():
-    return True
-
-input('hai')
+def test(var1, var3):
+    7
+var1 = 9
+test(var1, 6)

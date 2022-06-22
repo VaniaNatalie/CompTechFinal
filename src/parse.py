@@ -227,7 +227,8 @@ class Parse:
                         if self.lookahead.get('value') not in params:
                             # Append to params
                             params.append(self.lookahead.get('value'))
-                            self.identifier(True)
+                            # Eat identifier
+                            self.eat('identifier')
                             if self.lookahead.get('type') == ')':
                                 break
                             # If there are more than 1 param
@@ -272,6 +273,8 @@ class Parse:
             line, col = self.t.getIndex()
             raise SyntaxError("Block Statement Expected Line: {} Col: {}".format(line, col))
         
+        # Add number of params 
+        funcParams.append(len(params))
         ast = {
             'type': 'FunctionDeclaration',
             'funcId': funcId,
@@ -297,6 +300,10 @@ class Parse:
 
     def variableDeclaration(self):
         tempVar = self.identifier(True)
+        # If it is in a form of a list (happens when the result is 
+        # CallExpression, get the first value)
+        if type(tempVar) is list:
+            tempVar = tempVar[0]
         tempVarValue = tempVar.get('value')
 
         # Call expression (inside expr statement)
@@ -337,9 +344,14 @@ class Parse:
     
     def expressionStatement(self, identifier=None, call=False):
         if identifier != None:
+            # If it is call expression, directly return the ast
             if call == True:
-                expr =[self.callExpression(identifier)]
-                return expr
+                expr = [self.callExpression(identifier)]
+                ast = {
+                    'type': 'ExpressionStatement',
+                    'expression': expr
+                }
+                return ast
             else:
                 expr = [identifier]
         else:
@@ -550,7 +562,7 @@ class Parse:
                 line, col = self.t.getIndex()
                 raise SyntaxError("Missing ( Line: {} Col: {}".format(line, col))
             if self.lookahead.get('type') == 'identifier':
-                input = self.identifier(True)
+                input = self.identifier(True)[0]
             else:
                 try:
                     input = self.expression()
@@ -570,8 +582,37 @@ class Parse:
             return ast
         # If it is other function calling
         elif identifier != None and identifier in func:
-            
+            params = [] # Check for params
+            checker = 0 # Counter for current param      
+            # Check how many parameters the function is expecting
+            index = funcParams[func.index(identifier)]
+
             self.eat('(')
+            # If expecting params
+            if index != 0:
+                # Loop as many times as params expected
+                for i in range(index):
+                    try:
+                        # Call self.expression()
+                        params.append(self.expression())
+                    except:
+                        # If there is no params, break to return error
+                        break
+                    # Add checker as we have already get 1 param
+                    checker += 1
+                    # If it is not , break
+                    if self.lookahead.get('type') != ',':
+                        break
+                    self.eat(',')
+
+                # If there is still more parameters  
+                if self.lookahead.get('type') != ')':
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Too Many Parameters Line: {} Col: {}".format(line, col))
+                # If there is too less parameters
+                if checker < index:
+                    line, col = self.t.getIndex()
+                    raise SyntaxError("Missing Parameters Line: {} Col: {}".format(line, col))
             if self.lookahead != None and self.lookahead.get('type') == ')':
                 self.eat(')')
             else:
@@ -579,7 +620,8 @@ class Parse:
                 raise SyntaxError("Missing ) Line: {} Col: {}".format(line, col))
             ast = {
                 'type': 'CallExpression',
-                'funcId': identifier,
+                'value': identifier,
+                'params': params,
             }
             return ast
         else:
