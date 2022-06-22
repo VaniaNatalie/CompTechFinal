@@ -25,9 +25,6 @@ class Convert:
         res = ['\n\nint main(void) {\n']
 
         for i in statement.get('body'):
-            # Function call
-            if i['type'] == "FunctionDeclaration":
-                res.append("%s%s();\n" % (self.indent * " ",self.create_identifier(i['funcId'])))
             # Declare variable
             if i['type'] == 'VariableDeclaration':
                 res.append(self.variabledeclaration(i))
@@ -64,10 +61,10 @@ class Convert:
     # Function to help format the input
     def create_input(self, node):
         value_type = str(node['type'])
+        value = ''
         if value_type == 'ExpressionStatement':
             for i in node['expression']:
                 variable_type = i['type']
-
                 if variable_type == 'CallExpression':
                     value = i['value']
                 continue
@@ -77,6 +74,8 @@ class Convert:
             value = str(node['value']).lower()
         if value_type == "StringLiteral":
             value = '"{}"'.format(str(node['value']))
+        if value_type == 'NumericalLiteral':
+            value = str(node['value'])
         return value
     
     # Function to create function params
@@ -108,16 +107,16 @@ class Convert:
         res.append(self.create_header())
         call_expression = ''
         for i in statement.get('body'):
-            if i['type'] == 'ExpressionStatement':
+            value_type = i['type']
+            if value_type == 'ExpressionStatement':
                 for k in i['expression']:
                     if k['type'] == 'CallExpression':
                        call_expression = k['type']
                 continue
-            if i['type'] != 'VariableDeclaration' or call_expression != 'CallExpression':
+
+            if value_type != 'VariableDeclaration': 
                 res += self.create_statement(i)
-            # Call 'VariableDeclaration' and 'CallExpression' in main function
-            else:
-                pass
+       
         for j in self.create_main(statement):
             main_res += j
         final_res = res + main_res
