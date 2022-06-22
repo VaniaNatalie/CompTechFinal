@@ -105,13 +105,9 @@ class Convert:
         res = []
         main_res = []
         res.append(self.create_header())
-        call_expression = ''
         for i in statement.get('body'):
             value_type = i['type']
             if value_type == 'ExpressionStatement':
-                for k in i['expression']:
-                    if k['type'] == 'CallExpression':
-                       call_expression = k['type']
                 continue
 
             if value_type != 'VariableDeclaration': 
