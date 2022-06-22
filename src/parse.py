@@ -562,7 +562,7 @@ class Parse:
                 line, col = self.t.getIndex()
                 raise SyntaxError("Missing ( Line: {} Col: {}".format(line, col))
             if self.lookahead.get('type') == 'identifier':
-                input = self.identifier(True)[0]
+                input = self.identifier(True)
             else:
                 try:
                     input = self.expression()

@@ -1,4 +1,17 @@
-def test(var1, var3):
-    7
-var1 = 9
-test(var1, 6)
+def hai():
+    return True
+
+def test(var1):
+    if 2<3:
+        if 5<4:
+            print('hai')
+    elif 2<3:
+        print(hai())
+    else: 
+        return 3-5
+
+print('hai')
+var1 = 'hai'
+
+print(hai())
+input('hai')
